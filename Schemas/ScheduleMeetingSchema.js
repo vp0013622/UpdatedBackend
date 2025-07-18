@@ -2,14 +2,14 @@ import mongoose from "mongoose";
 import * as dotenv from 'dotenv'
 
 dotenv.config()
-export const FavoritePropertySchema = mongoose.Schema(
+export const ScheduleMeetingSchema = mongoose.Schema(
     {
-        userId:{
+        customerId:{
           type: mongoose.Schema.Types.ObjectId,
           required: true,
           ref: "UsersModel",
         },
-        customerId:{
+        scheduleByUserId:{
           type: mongoose.Schema.Types.ObjectId,
           required: true,
           ref: "UsersModel",
@@ -18,6 +18,20 @@ export const FavoritePropertySchema = mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           required: true,
           ref: "PropertyModel",
+        },
+        scheduleOnDate:{
+          type: Date,
+          required: true,
+        },
+        scheduleOnTime:{
+          type: String,
+          required: true,
+        },
+        meetingStatus:{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "MeetingScheduleStatusModel",
+          required: true,
+          trim: true
         },
         createdByUserId: {
           type: mongoose.Schema.Types.ObjectId,
