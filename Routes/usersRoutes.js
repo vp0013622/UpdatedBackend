@@ -8,7 +8,7 @@ UsersRouter.post('/register',  RoleAuthMiddleware("admin"), Register) //only adm
 UsersRouter.get('/',  RoleAuthMiddleware("admin"), GetAllUsers)//only for admin
 UsersRouter.get('/notpublishedusers',  RoleAuthMiddleware("admin"), GetAllNotPublishedUsers)//only for admin
 UsersRouter.post('/withparams',  RoleAuthMiddleware("admin"), GetAllUsersWithParams)//only for admin
-UsersRouter.get('/:id',  RoleAuthMiddleware("admin", "executive", "sales"), GetUserById)//only for admin
+UsersRouter.get('/:id',  AuthMiddelware, GetUserById)//for all authenticated users
 UsersRouter.put('/edit/:id',  RoleAuthMiddleware("admin"), Edit)//only for admin
 UsersRouter.delete('/delete/:id',  RoleAuthMiddleware("admin"), DeleteById)//only for admin
 UsersRouter.post('/change-password', AuthMiddelware, ChangePassword)//for all authenticated users

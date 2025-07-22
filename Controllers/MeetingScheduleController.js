@@ -12,42 +12,56 @@ const Create = async (req, res) => {
             startTime, 
             endTime, 
             duration,
-            location, 
             status, 
-            customerId, 
+            customerIds, 
             propertyId, 
             notes 
         } = req.body;
 
-        if (!title || !meetingDate || !startTime || !location || !status || !customerId) {
+        if (!title || !meetingDate || !startTime || !status || !customerIds) {
             return res.status(400).json({
-                message: 'bad request check data again',
+                message: 'Title, meeting date, start time, status, and customer IDs are required',
                 data: req.body
             })
         }
 
-        const newMeeting = {
-            title,
-            description: description || "",
-            meetingDate,
-            startTime,
-            endTime: endTime || null,
-            duration: duration || null,
-            location,
-            status,
-            scheduledByUserId: req.user.id,
-            customerId,
-            propertyId: propertyId || null,
-            notes: notes || "",
-            createdByUserId: req.user.id,
-            updatedByUserId: req.user.id,
-            published: true
+        // Validate customerIds is an array
+        if (!Array.isArray(customerIds) || customerIds.length === 0) {
+            return res.status(400).json({
+                message: 'At least one customer ID is required',
+                data: req.body
+            })
         }
 
-        const meeting = await MeetingScheduleModel.create(newMeeting)
+        const createdMeetings = [];
+
+        // Create separate meeting for each customer
+        for (const customerId of customerIds) {
+            const newMeeting = {
+                title,
+                description: description || "",
+                meetingDate,
+                startTime,
+                endTime: endTime || null,
+                duration: duration || null,
+                status,
+                scheduledByUserId: req.user.id,
+                customerId,
+                propertyId: propertyId || null,
+                notes: notes || "",
+                createdByUserId: req.user.id,
+                updatedByUserId: req.user.id,
+                published: true
+            }
+
+            const meeting = await MeetingScheduleModel.create(newMeeting)
+            createdMeetings.push(meeting)
+        }
+
         return res.status(201).json({
-            message: 'meeting schedule added successfully',
-            data: meeting
+            message: `Meeting schedules added successfully for ${createdMeetings.length} customer(s)`,
+            count: createdMeetings.length,
+            data: createdMeetings
         })
 
     }
@@ -62,13 +76,6 @@ const Create = async (req, res) => {
 const GetAllMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: true })
-            .populate('status', 'name statusCode')
-            .populate('customerId', 'firstName lastName email phoneNumber')
-            .populate('propertyId', 'title address')
-            .populate('scheduledByUserId', 'firstName lastName email')
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
-            .sort({ meetingDate: -1 });
 
         // Get status counts
         const statusCounts = await MeetingScheduleModel.aggregate([
@@ -131,38 +138,8 @@ const GetAllMeetingSchedules = async (req, res) => {
 const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.user.id;
-        const userRole = req.user.role;
-
-        let filter = { published: true };
-
-        // Filter based on user role
-        if (userRole === 'admin') {
-            // Admin can see all meetings
-            filter = { published: true };
-        } else if (userRole === 'sales' || userRole === 'executive') {
-            // Sales and executive can only see meetings they scheduled
-            filter = { 
-                published: true,
-                scheduledByUserId: id 
-            };
-        } else {
-            // Other users can only see meetings where they are customers
-            filter = { 
-                published: true,
-                customerId: id 
-            };
-        }
-
-        const meetings = await MeetingScheduleModel.find(filter)
-            .populate('status', 'name statusCode')
-            .populate('customerId', 'firstName lastName email phoneNumber')
-            .populate('propertyId', 'title address')
-            .populate('scheduledByUserId', 'firstName lastName email')
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
-            .sort({ meetingDate: -1 });
-
+        var meetings = await MeetingScheduleModel.find({published:true})
+        meetings = meetings.filter(meeting => meeting.customerId.includes(id))
         // Get status counts for user's meetings
         const statusCounts = await MeetingScheduleModel.aggregate([
             { $match: filter },
@@ -224,13 +201,6 @@ const GetMyMeetings = async (req, res) => {
 const GetAllNotPublishedMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: false })
-            .populate('status', 'name statusCode')
-            .populate('customerId', 'firstName lastName email phoneNumber')
-            .populate('propertyId', 'title address')
-            .populate('scheduledByUserId', 'firstName lastName email')
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
-            .sort({ meetingDate: -1 });
 
         return res.status(200).json({
             message: 'all not published meeting schedules',
@@ -249,13 +219,7 @@ const GetAllNotPublishedMeetingSchedules = async (req, res) => {
 const GetMeetingScheduleById = async (req, res) => {
     try {
         var { id } = req.params
-        const meeting = await MeetingScheduleModel.findById(id)
-            .populate('status', 'name statusCode')
-            .populate('customerId', 'firstName lastName email phoneNumber')
-            .populate('propertyId', 'title address')
-            .populate('scheduledByUserId', 'firstName lastName email')
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
+        const meeting = await MeetingScheduleModel.find({scheduledByUserId: id})
 
         if (meeting == null) {
             return res.status(404).json({
@@ -285,16 +249,15 @@ const Edit = async (req, res) => {
             startTime, 
             endTime, 
             duration,
-            location, 
             status, 
             customerId, 
             propertyId, 
             notes 
         } = req.body;
 
-        if (!title || !meetingDate || !startTime || !location || !status || !customerId) {
+        if (!title || !meetingDate || !startTime || !status || !customerId) {
             return res.status(400).json({
-                message: 'bad request check data again',
+                message: 'Title, meeting date, start time, status, and customer ID are required',
                 data: req.body
             })
         }
@@ -314,7 +277,6 @@ const Edit = async (req, res) => {
             startTime,
             endTime: endTime || null,
             duration: duration || null,
-            location,
             status,
             scheduledByUserId: meeting.scheduledByUserId,
             customerId,

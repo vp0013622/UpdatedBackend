@@ -53,8 +53,6 @@ const Create = async (req, res) => {
 const GetAllMeetingScheduleStatuses = async (req, res) => {
     try {
         const statuses = await MeetingScheduleStatusModel.find({ published: true })
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -74,8 +72,6 @@ const GetAllMeetingScheduleStatuses = async (req, res) => {
 const GetAllNotPublishedMeetingScheduleStatuses = async (req, res) => {
     try {
         const statuses = await MeetingScheduleStatusModel.find({ published: false })
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
             .sort({ createdAt: -1 });
 
         return res.status(200).json({
@@ -98,8 +94,8 @@ const GetMeetingScheduleStatusById = async (req, res) => {
     try {
         var { id } = req.params
         const status = await MeetingScheduleStatusModel.findById(id)
-            .populate('createdByUserId', 'firstName lastName email')
-            .populate('updatedByUserId', 'firstName lastName email')
+            // .populate('createdByUserId', 'firstName lastName email')
+            // .populate('updatedByUserId', 'firstName lastName email')
 
         if (status == null) {
             return res.status(404).json({
