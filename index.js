@@ -32,6 +32,7 @@ import DocumentTypesRouter from './Routes/documentTypesRoutes.js'
 import DashboardRouter from './Routes/dashboardRoutes.js'
 import MeetingScheduleStatusRouter from './Routes/meetingScheduleStatusRoutes.js'
 import MeetingScheduleRouter from './Routes/meetingScheduleRoutes.js'
+import FeedbackRouter from './Routes/feedbackRoutes.js'
 
 // Import environment configuration
 import config from './config/environment.js'
@@ -246,6 +247,7 @@ app.use('/api/documenttypes',AuthMiddelware, DocumentTypesRouter)
 app.use('/api/dashboard',AuthMiddelware, DashboardRouter)
 app.use('/api/meetingschedulestatus',AuthMiddelware, MeetingScheduleStatusRouter)
 app.use('/api/meetingschedule',AuthMiddelware, MeetingScheduleRouter)
+app.use('/api/feedback', FeedbackRouter)
 
 
 //document type and document updated in github 02_06_2025
