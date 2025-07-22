@@ -4,25 +4,25 @@ import { FeedbackModel } from '../Models/FeedbackModel.js';
 // Test data for feedback
 const testFeedbackData = [
   {
-    feedbackGiverUserId: '6836054a255299ff46670a6e', // Admin user ID
+    salesPersonUserId: '6836054a255299ff46670a6e', // Sales person ID
+    customerId: '68346f62de3d56d44b9cbc5c', // Customer ID
     overallExperience: 4,
-    salesPersonBehavior: 5,
+    salesPersonRating: 5,
     companyRating: 4,
     whatUserLiked: 'The sales person was very helpful and professional. The company provided excellent service.',
     whatToImprove: 'Could improve response time for property viewings.',
-    additionalComment: 'Overall great experience, would recommend to friends.',
     isAnonymous: false,
-    createdByUserId: '6836054a255299ff46670a6e',
-    updatedByUserId: '6836054a255299ff46670a6e'
+    createdByUserId: '68346f62de3d56d44b9cbc5c',
+    updatedByUserId: '68346f62de3d56d44b9cbc5c'
   },
   {
-    feedbackGiverUserId: '68346f62de3d56d44b9cbc5c', // Another user ID
+    salesPersonUserId: '6836054a255299ff46670a6e', // Sales person ID
+    customerId: '68346f62de3d56d44b9cbc5c', // Customer ID
     overallExperience: 5,
-    salesPersonBehavior: 5,
+    salesPersonRating: 5,
     companyRating: 5,
     whatUserLiked: 'Amazing experience! The sales team was outstanding and the company exceeded expectations.',
     whatToImprove: '',
-    additionalComment: 'Best real estate company I have worked with!',
     isAnonymous: false,
     createdByUserId: '68346f62de3d56d44b9cbc5c',
     updatedByUserId: '68346f62de3d56d44b9cbc5c'
@@ -55,7 +55,7 @@ const testFeedbackModule = async () => {
         $group: {
           _id: null,
           avgOverallExperience: { $avg: '$overallExperience' },
-          avgSalesPersonBehavior: { $avg: '$salesPersonBehavior' },
+          avgSalesPersonRating: { $avg: '$salesPersonRating' },
           avgCompanyRating: { $avg: '$companyRating' }
         }
       }
@@ -70,25 +70,25 @@ const testFeedbackModule = async () => {
     ]);
     console.log('✅ Overall experience distribution:', overallExperienceDistribution);
 
-    // Test 6: Test sales person behavior distribution
-    console.log('\n6. Testing sales person behavior distribution...');
+    // Test 6: Test sales person rating distribution
+    console.log('\n6. Testing sales person rating distribution...');
     const salesPersonDistribution = await FeedbackModel.aggregate([
-      { $group: { _id: '$salesPersonBehavior', count: { $sum: 1 } } },
+      { $group: { _id: '$salesPersonRating', count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
-    console.log('✅ Sales person behavior distribution:', salesPersonDistribution);
+    console.log('✅ Sales person rating distribution:', salesPersonDistribution);
 
     console.log('\n🎉 All feedback module tests passed successfully!');
-    console.log('\n📊 Simplified Feedback Module Features:');
+    console.log('\n📊 Updated Feedback Module Features:');
+    console.log('   ✅ Sales person ID tracking');
+    console.log('   ✅ Customer ID tracking');
     console.log('   ✅ Overall experience rating (1-5 stars)');
-    console.log('   ✅ Sales person behavior rating (1-5 stars)');
+    console.log('   ✅ Sales person rating (1-5 stars)');
     console.log('   ✅ Company rating (1-5 stars)');
     console.log('   ✅ What user liked (required)');
     console.log('   ✅ What to improve (optional)');
-    console.log('   ✅ Additional comments (optional)');
     console.log('   ✅ Anonymous feedback option');
-    console.log('   ✅ Admin response system');
-    console.log('   ✅ Status and priority management');
+    console.log('   ✅ Status management (pending, viewed, submitted, closed)');
     console.log('   ✅ Analytics and reporting');
     console.log('   ✅ User permissions and security');
 

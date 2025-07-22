@@ -13,7 +13,6 @@ FeedbackRouter.delete('/:id', AuthMiddelware, FeedbackController.DeleteFeedback)
 
 // Admin-only routes
 FeedbackRouter.get('/', RoleAuthMiddleware("admin", "executive"), FeedbackController.GetAllFeedback);
-FeedbackRouter.post('/:id/respond', RoleAuthMiddleware("admin", "executive"), FeedbackController.RespondToFeedback);
 FeedbackRouter.put('/:id/status', RoleAuthMiddleware("admin", "executive"), FeedbackController.UpdateFeedbackStatus);
 FeedbackRouter.get('/analytics/summary', RoleAuthMiddleware("admin", "executive"), FeedbackController.GetFeedbackSummary);
 FeedbackRouter.get('/analytics/detailed', RoleAuthMiddleware("admin", "executive"), FeedbackController.GetFeedbackAnalytics);

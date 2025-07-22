@@ -1,12 +1,18 @@
 import mongoose from 'mongoose';
 
 const FeedbackSchema = new mongoose.Schema({
-  // Basic Information
-  feedbackGiverUserId: {
+
+  salesPersonUserId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Users',
     required: true,
-    description: 'User who provided the feedback'
+  },
+
+  // Basic Information
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Users',
+    required: true
   },
   
   // Simple Ratings (1-5 stars)
@@ -18,7 +24,7 @@ const FeedbackSchema = new mongoose.Schema({
     description: 'Overall experience rating out of 5 stars'
   },
   
-  salesPersonBehavior: {
+  salesPersonRating: {
     type: Number,
     required: true,
     min: 1,
@@ -38,23 +44,15 @@ const FeedbackSchema = new mongoose.Schema({
   whatUserLiked: {
     type: String,
     required: true,
-    maxlength: 500,
+    maxlength: 1000,
     description: 'What the user liked about the service'
   },
   
   whatToImprove: {
     type: String,
     required: false,
-    maxlength: 500,
-    description: 'What can be improved'
-  },
-  
-  // Optional additional comment
-  additionalComment: {
-    type: String,
-    required: false,
     maxlength: 1000,
-    description: 'Any additional comments'
+    description: 'What can be improved'
   },
   
   // Metadata
@@ -66,42 +64,9 @@ const FeedbackSchema = new mongoose.Schema({
   
   status: {
     type: String,
-    enum: ['pending', 'reviewed', 'addressed', 'closed'],
+    enum: ['pending', 'viewed', 'submitted', 'closed'],
     default: 'pending',
     description: 'Status of the feedback'
-  },
-  
-  priority: {
-    type: String,
-    enum: ['low', 'medium', 'high', 'critical'],
-    default: 'medium',
-    description: 'Priority level of the feedback'
-  },
-  
-  // Admin Response
-  adminResponse: {
-    respondedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Users'
-    },
-    response: {
-      type: String,
-      maxlength: 1000
-    },
-    respondedAt: {
-      type: Date
-    }
-  },
-  
-  // Timestamps
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  updatedAt: {
-    type: Date,
-    default: Date.now
   },
   
   // Audit Fields
@@ -126,15 +91,15 @@ const FeedbackSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-FeedbackSchema.index({ feedbackGiverUserId: 1 });
+FeedbackSchema.index({ customerId: 1 });
+FeedbackSchema.index({ salesPersonUserId: 1 });
 FeedbackSchema.index({ overallExperience: 1 });
 FeedbackSchema.index({ status: 1 });
 FeedbackSchema.index({ createdAt: -1 });
-FeedbackSchema.index({ priority: 1 });
 
 // Virtual for average rating
 FeedbackSchema.virtual('averageRating').get(function() {
-  return (this.overallExperience + this.salesPersonBehavior + this.companyRating) / 3;
+  return (this.overallExperience + this.salesPersonRating + this.companyRating) / 3;
 });
 
 // Pre-save middleware to update timestamps

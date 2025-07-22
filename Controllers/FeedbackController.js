@@ -5,16 +5,24 @@ import { UsersModel } from '../Models/UsersModel.js';
 const CreateFeedback = async (req, res) => {
   try {
     const {
+      salesPersonUserId,
       overallExperience,
-      salesPersonBehavior,
+      salesPersonRating,
       companyRating,
       whatUserLiked,
       whatToImprove,
-      additionalComment,
       isAnonymous = false
     } = req.body;
 
     // Validate required fields
+    if (!salesPersonUserId) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: 'Sales person ID is required',
+        data: null
+      });
+    }
+
     if (!overallExperience || overallExperience < 1 || overallExperience > 5) {
       return res.status(400).json({
         statusCode: 400,
@@ -23,10 +31,10 @@ const CreateFeedback = async (req, res) => {
       });
     }
 
-    if (!salesPersonBehavior || salesPersonBehavior < 1 || salesPersonBehavior > 5) {
+    if (!salesPersonRating || salesPersonRating < 1 || salesPersonRating > 5) {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Sales person behavior rating is required and must be between 1 and 5',
+        message: 'Sales person rating is required and must be between 1 and 5',
         data: null
       });
     }
@@ -49,13 +57,13 @@ const CreateFeedback = async (req, res) => {
 
     // Create feedback object
     const feedbackData = {
-      feedbackGiverUserId: req.user._id,
+      salesPersonUserId,
+      customerId: req.user._id,
       overallExperience,
-      salesPersonBehavior,
+      salesPersonRating,
       companyRating,
       whatUserLiked,
       whatToImprove,
-      additionalComment,
       isAnonymous,
       createdByUserId: req.user._id,
       updatedByUserId: req.user._id
@@ -111,8 +119,8 @@ const GetAllFeedback = async (req, res) => {
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     const feedback = await FeedbackModel.find(query)
-      .populate('feedbackGiverUserId', 'firstName lastName email')
-      .populate('adminResponse.respondedBy', 'firstName lastName')
+      .populate('salesPersonUserId', 'firstName lastName email')
+      .populate('customerId', 'firstName lastName email')
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
@@ -147,8 +155,8 @@ const GetFeedbackById = async (req, res) => {
     const { id } = req.params;
 
     const feedback = await FeedbackModel.findById(id)
-      .populate('feedbackGiverUserId', 'firstName lastName email')
-      .populate('adminResponse.respondedBy', 'firstName lastName');
+      .populate('salesPersonUserId', 'firstName lastName email')
+      .populate('customerId', 'firstName lastName email');
 
     if (!feedback) {
       return res.status(404).json({
@@ -181,12 +189,13 @@ const GetMyFeedback = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const feedback = await FeedbackModel.find({ feedbackGiverUserId: userId })
+    const feedback = await FeedbackModel.find({ customerId: userId })
+      .populate('salesPersonUserId', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await FeedbackModel.countDocuments({ feedbackGiverUserId: userId });
+    const total = await FeedbackModel.countDocuments({ customerId: userId });
 
     res.status(200).json({
       statusCode: 200,
@@ -228,7 +237,7 @@ const UpdateFeedback = async (req, res) => {
     }
 
     // Check if user owns this feedback or is admin
-    if (feedback.feedbackGiverUserId.toString() !== userId.toString() && req.user.role !== 'admin') {
+    if (feedback.customerId.toString() !== userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         statusCode: 403,
         message: 'You can only update your own feedback',
@@ -237,10 +246,10 @@ const UpdateFeedback = async (req, res) => {
     }
 
     // Users can only update if status is pending
-    if (feedback.feedbackGiverUserId.toString() === userId.toString() && feedback.status !== 'pending') {
+    if (feedback.customerId.toString() === userId.toString() && feedback.status !== 'pending') {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Cannot update feedback that has been reviewed',
+        message: 'Cannot update feedback that has been viewed',
         data: null
       });
     }
@@ -294,7 +303,7 @@ const DeleteFeedback = async (req, res) => {
     }
 
     // Check permissions
-    if (feedback.feedbackGiverUserId.toString() !== userId.toString() && req.user.role !== 'admin') {
+    if (feedback.customerId.toString() !== userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({
         statusCode: 403,
         message: 'You can only delete your own feedback',
@@ -303,10 +312,10 @@ const DeleteFeedback = async (req, res) => {
     }
 
     // Users can only delete pending feedback
-    if (feedback.feedbackGiverUserId.toString() === userId.toString() && feedback.status !== 'pending') {
+    if (feedback.customerId.toString() === userId.toString() && feedback.status !== 'pending') {
       return res.status(400).json({
         statusCode: 400,
-        message: 'Cannot delete feedback that has been reviewed',
+        message: 'Cannot delete feedback that has been viewed',
         data: null
       });
     }
@@ -329,66 +338,11 @@ const DeleteFeedback = async (req, res) => {
   }
 };
 
-// Admin response to feedback
-const RespondToFeedback = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { response } = req.body;
-
-    if (!response) {
-      return res.status(400).json({
-        statusCode: 400,
-        message: 'Response is required',
-        data: null
-      });
-    }
-
-    const feedback = await FeedbackModel.findById(id);
-
-    if (!feedback) {
-      return res.status(404).json({
-        statusCode: 404,
-        message: 'Feedback not found',
-        data: null
-      });
-    }
-
-    feedback.adminResponse = {
-      respondedBy: req.user._id,
-      response,
-      respondedAt: new Date()
-    };
-
-    feedback.status = 'reviewed';
-    feedback.updatedByUserId = req.user._id;
-
-    await feedback.save();
-
-    const updatedFeedback = await FeedbackModel.findById(id)
-      .populate('feedbackGiverUserId', 'firstName lastName email')
-      .populate('adminResponse.respondedBy', 'firstName lastName');
-
-    res.status(200).json({
-      statusCode: 200,
-      message: 'Response added successfully',
-      data: updatedFeedback
-    });
-
-  } catch (error) {
-    console.error('RespondToFeedback Error:', error);
-    res.status(500).json({
-      statusCode: 500,
-      message: 'Internal server error',
-      data: null
-    });
-  }
-};
-
 // Update feedback status (admin only)
 const UpdateFeedbackStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, priority } = req.body;
+    const { status } = req.body;
 
     const feedback = await FeedbackModel.findById(id);
 
@@ -406,13 +360,13 @@ const UpdateFeedbackStatus = async (req, res) => {
     };
 
     if (status) updateData.status = status;
-    if (priority) updateData.priority = priority;
 
     const updatedFeedback = await FeedbackModel.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('feedbackGiverUserId', 'firstName lastName email');
+    ).populate('salesPersonUserId', 'firstName lastName email')
+     .populate('customerId', 'firstName lastName email');
 
     res.status(200).json({
       statusCode: 200,
@@ -453,7 +407,7 @@ const GetFeedbackAnalytics = async (req, res) => {
         $group: {
           _id: null,
           avgOverallExperience: { $avg: '$overallExperience' },
-          avgSalesPersonBehavior: { $avg: '$salesPersonBehavior' },
+          avgSalesPersonRating: { $avg: '$salesPersonRating' },
           avgCompanyRating: { $avg: '$companyRating' }
         }
       }
@@ -466,10 +420,10 @@ const GetFeedbackAnalytics = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
-    // Sales person behavior distribution
+    // Sales person rating distribution
     const salesPersonDistribution = await FeedbackModel.aggregate([
       { $match: query },
-      { $group: { _id: '$salesPersonBehavior', count: { $sum: 1 } } },
+      { $group: { _id: '$salesPersonRating', count: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
 
@@ -560,7 +514,7 @@ const GetFeedbackSummary = async (req, res) => {
         $group: {
           _id: null,
           avgOverallExperience: { $avg: '$overallExperience' },
-          avgSalesPersonBehavior: { $avg: '$salesPersonBehavior' },
+          avgSalesPersonRating: { $avg: '$salesPersonRating' },
           avgCompanyRating: { $avg: '$companyRating' }
         }
       }
@@ -596,7 +550,6 @@ export {
   GetMyFeedback,
   UpdateFeedback,
   DeleteFeedback,
-  RespondToFeedback,
   UpdateFeedbackStatus,
   GetFeedbackAnalytics,
   GetFeedbackSummary
