@@ -76,6 +76,7 @@ const Create = async (req, res) => {
 const GetAllMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: true })
+            .populate('status', 'name statusCode description')
 
         // Get status counts
         const statusCounts = await MeetingScheduleModel.aggregate([
@@ -139,6 +140,7 @@ const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
         var meetings = await MeetingScheduleModel.find({published:true})
+            .populate('status', 'name statusCode description')
         meetings = meetings.filter(meeting => meeting.customerId.includes(id))
         // Get status counts for user's meetings
         const statusCounts = await MeetingScheduleModel.aggregate([
@@ -220,6 +222,7 @@ const GetMeetingScheduleById = async (req, res) => {
     try {
         var { id } = req.params
         const meeting = await MeetingScheduleModel.find({scheduledByUserId: id})
+            .populate('status', 'name statusCode description')
 
         if (meeting == null) {
             return res.status(404).json({
