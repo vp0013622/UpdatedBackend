@@ -1,4 +1,5 @@
 import { ContactUsModel } from "../Models/ContactUsModel.js"
+import NotificationService from "../Services/NotificationService.js"
 
 export const Create = async (req, res) => {
     try {
@@ -21,6 +22,21 @@ export const Create = async (req, res) => {
         })
 
         await newContact.save()
+        
+        // Create notification for admins
+        try {
+            await NotificationService.createContactUsNotification({
+                name: name,
+                email: email,
+                subject: 'New Contact Form Submission',
+                message: description || 'No description provided',
+                contactId: newContact._id
+            });
+        } catch (notificationError) {
+            console.error('Error creating contact us notification:', notificationError);
+            // Don't fail the contact creation if notification fails
+        }
+        
         return res.status(201).json({
             message: 'Contact us message created successfully',
             data: newContact

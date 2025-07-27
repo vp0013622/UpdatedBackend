@@ -1,5 +1,6 @@
 import { LeadsModel } from "../Models/LeadsModel.js"
 import { UsersModel } from "../Models/UsersModel.js"
+import NotificationService from "../Services/NotificationService.js"
 
 const Create = async (req, res) => {
     try {
@@ -57,6 +58,29 @@ const Create = async (req, res) => {
         }
 
         const lead = await LeadsModel.create(cleanedData)
+        
+        // Create notification if lead is assigned to someone
+        if (cleanedData.assignedToUserId) {
+            try {
+                // Get lead details for notification
+                const populatedLead = await LeadsModel.findById(lead._id)
+                    .populate('userId', 'firstName lastName')
+                    .populate('leadInterestedPropertyId', 'propertyName')
+                
+                if (populatedLead) {
+                    await NotificationService.createLeadAssignmentNotification({
+                        assignedTo: cleanedData.assignedToUserId,
+                        customerName: `${populatedLead.userId.firstName} ${populatedLead.userId.lastName}`,
+                        propertyName: populatedLead.leadInterestedPropertyId?.propertyName || 'Property',
+                        leadId: lead._id
+                    });
+                }
+            } catch (notificationError) {
+                console.error('Error creating lead assignment notification:', notificationError);
+                // Don't fail the lead creation if notification fails
+            }
+        }
+        
         return res.status(200).json({
             message: 'Lead created successfully',
             data: lead

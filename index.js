@@ -33,6 +33,7 @@ import DashboardRouter from './Routes/dashboardRoutes.js'
 import MeetingScheduleStatusRouter from './Routes/meetingScheduleStatusRoutes.js'
 import MeetingScheduleRouter from './Routes/meetingScheduleRoutes.js'
 import FeedbackRouter from './Routes/feedbackRoutes.js'
+import NotificationRouter from './Routes/notificationRoutes.js'
 
 // Import environment configuration
 import config from './config/environment.js'
@@ -247,6 +248,7 @@ app.use('/api/documenttypes',AuthMiddelware, DocumentTypesRouter)
 app.use('/api/dashboard',AuthMiddelware, DashboardRouter)
 app.use('/api/meetingschedulestatus',AuthMiddelware, MeetingScheduleStatusRouter)
 app.use('/api/meetingschedule',AuthMiddelware, MeetingScheduleRouter)
+app.use('/api/notifications',AuthMiddelware, NotificationRouter)
 app.use('/api/feedback', FeedbackRouter)
 
 

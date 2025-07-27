@@ -1,5 +1,6 @@
 import { MeetingScheduleModel } from "../Models/MeetingScheduleModel.js";
 import { MeetingScheduleStatusModel } from "../Models/MeetingScheduleStatusModel.js";
+import NotificationService from "../Services/NotificationService.js";
 import * as dotenv from 'dotenv'
 dotenv.config()
 
@@ -56,6 +57,16 @@ const Create = async (req, res) => {
 
             const meeting = await MeetingScheduleModel.create(newMeeting)
             createdMeetings.push(meeting)
+            
+            // Create notification for the customer
+            await NotificationService.createMeetingNotification({
+                _id: meeting._id,
+                userId: customerId,
+                title: title,
+                date: meetingDate,
+                time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
+                description: description || ""
+            }, 'created');
         }
 
         return res.status(201).json({
@@ -141,7 +152,9 @@ const GetMyMeetings = async (req, res) => {
         const { id } = req.params;
         var meetings = await MeetingScheduleModel.find({published:true})
             .populate('status', 'name statusCode description')
-        meetings = meetings.filter(meeting => meeting.customerId.includes(id))
+        meetings = meetings.filter(meeting => meeting.customerId == id)
+
+        
         // Get status counts for user's meetings
         const statusCounts = await MeetingScheduleModel.aggregate([
             { $match: filter },
@@ -296,6 +309,17 @@ const Edit = async (req, res) => {
                 message: 'meeting schedule not found'
             })
         }
+        
+        // Create notification for the customer about meeting update
+        await NotificationService.createMeetingNotification({
+            _id: result._id,
+            userId: customerId,
+            title: title,
+            date: meetingDate,
+            time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
+            description: description || ""
+        }, 'updated');
+        
         return res.status(201).json({
             message: 'meeting schedule updated successfully'
         })
@@ -328,6 +352,17 @@ const DeleteById = async (req, res) => {
                 message: 'meeting schedule not found'
             })
         }
+        
+        // Create notification for the customer about meeting cancellation
+        await NotificationService.createMeetingNotification({
+            _id: result._id,
+            userId: result.customerId,
+            title: result.title,
+            date: result.meetingDate,
+            time: `${result.startTime}${result.endTime ? ` - ${result.endTime}` : ''}`,
+            description: result.description || ""
+        }, 'deleted');
+        
         return res.status(201).json({
             message: 'meeting schedule deleted successfully'
         })
