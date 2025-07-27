@@ -72,7 +72,9 @@ const Create = async (req, res) => {
                         assignedTo: cleanedData.assignedToUserId,
                         customerName: `${populatedLead.userId.firstName} ${populatedLead.userId.lastName}`,
                         propertyName: populatedLead.leadInterestedPropertyId?.propertyName || 'Property',
-                        leadId: lead._id
+                        leadId: lead._id,
+                        createdByUserId: req.user.id,
+                        updatedByUserId: req.user.id
                     });
                 }
             } catch (notificationError) {

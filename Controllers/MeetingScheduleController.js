@@ -18,7 +18,7 @@ const Create = async (req, res) => {
             propertyId, 
             notes 
         } = req.body;
-
+        console.log(req.body);
         if (!title || !meetingDate || !startTime || !status || !customerIds) {
             return res.status(400).json({
                 message: 'Title, meeting date, start time, status, and customer IDs are required',
@@ -65,7 +65,9 @@ const Create = async (req, res) => {
                 title: title,
                 date: meetingDate,
                 time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
-                description: description || ""
+                description: description || "",
+                createdByUserId: req.user.id,
+                updatedByUserId: req.user.id
             }, 'created');
         }
 

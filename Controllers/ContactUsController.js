@@ -30,7 +30,9 @@ export const Create = async (req, res) => {
                 email: email,
                 subject: 'New Contact Form Submission',
                 message: description || 'No description provided',
-                contactId: newContact._id
+                contactId: newContact._id,
+                createdByUserId: req.user?.id || newContact._id,
+                updatedByUserId: req.user?.id || newContact._id
             });
         } catch (notificationError) {
             console.error('Error creating contact us notification:', notificationError);
