@@ -150,14 +150,22 @@ const GetAllMeetingSchedules = async (req, res) => {
 const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
-        var meetings = await MeetingScheduleModel.find({published:true})
-            .populate('status', 'name statusCode description')
-        meetings = meetings.filter(meeting => meeting.customerId == id)
+        
+        // Find meetings where customerId matches the requested user ID
+        const meetings = await MeetingScheduleModel.find({
+            published: true,
+            customerId: id
+        });
 
         
         // Get status counts for user's meetings
         const statusCounts = await MeetingScheduleModel.aggregate([
-            { $match: filter },
+            { 
+                $match: { 
+                    published: true,
+                    customerId: id
+                } 
+            },
             {
                 $lookup: {
                     from: 'meetingschedulestatusmodels',
