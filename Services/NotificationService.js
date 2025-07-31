@@ -1,5 +1,6 @@
 import { NotificationModel } from '../Models/NotificationModel.js';
 import { UsersModel } from '../Models/UsersModel.js';
+import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 
 class NotificationService {
   // Create meeting schedule notification
@@ -7,10 +8,14 @@ class NotificationService {
     try {
       const { userId, title, date, time, description } = meetingData;
       
+      console.log('Creating meeting notification for user:', userId);
+      console.log('Meeting data:', meetingData);
+      
       // Get user details
       const user = await UsersModel.findById(userId);
       if (!user) {
         console.error('User not found for notification:', userId);
+        console.error('Available users:', await UsersModel.find({}, '_id firstName lastName email'));
         return;
       }
 
@@ -33,16 +38,19 @@ class NotificationService {
           action: action
         },
         priority: action === 'deleted' ? 'high' : 'medium',
-        createdByUserId: meetingData.createdByUserId || meetingData.scheduledByUserId,
-        updatedByUserId: meetingData.updatedByUserId || meetingData.scheduledByUserId,
+        createdByUserId: meetingData.createdByUserId || meetingData.scheduledByUserId || meetingData._id,
+        updatedByUserId: meetingData.updatedByUserId || meetingData.scheduledByUserId || meetingData._id,
         published: true
       });
 
       await notification.save();
       console.log(`Meeting notification created for user: ${userId}`);
+      console.log('Notification saved:', notification);
       return notification;
     } catch (error) {
       console.error('Error creating meeting notification:', error);
+      console.error('Error details:', error.message);
+      throw error; // Re-throw to see the error in the calling function
     }
   }
 
@@ -226,6 +234,98 @@ class NotificationService {
       return result.modifiedCount;
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
+      throw error;
+    }
+  }
+
+  // Create meeting reminder notifications for today's meetings
+  static async createMeetingReminderNotifications() {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+
+      // Find all meetings scheduled for today
+      const todaysMeetings = await MeetingScheduleModel.find({
+        meetingDate: {
+          $gte: today,
+          $lt: tomorrow
+        },
+        published: true
+      }).populate('scheduledByUserId', '_id firstName lastName email')
+        .populate('customerId', '_id firstName lastName email');
+
+      console.log(`Found ${todaysMeetings.length} meetings scheduled for today`);
+
+      const createdNotifications = [];
+
+      for (const meeting of todaysMeetings) {
+        const recipients = [];
+
+        // Add admin users
+        const adminUsers = await UsersModel.find({ role: 'admin' });
+        adminUsers.forEach(admin => {
+          if (!recipients.includes(admin._id.toString())) {
+            recipients.push(admin._id.toString());
+          }
+        });
+
+        // Add scheduled by user
+        if (meeting.scheduledByUserId && !recipients.includes(meeting.scheduledByUserId._id.toString())) {
+          recipients.push(meeting.scheduledByUserId._id.toString());
+        }
+
+        // Add customer
+        if (meeting.customerId && !recipients.includes(meeting.customerId._id.toString())) {
+          recipients.push(meeting.customerId._id.toString());
+        }
+
+        // Create reminder notification for each recipient
+        for (const recipientId of recipients) {
+          // Check if reminder notification already exists for this meeting and recipient
+          const existingReminder = await NotificationModel.findOne({
+            recipientIds: recipientId,
+            type: 'meeting_reminder',
+            'data.meetingId': meeting._id.toString(),
+            'data.reminderDate': today.toISOString().split('T')[0] // Today's date as string
+          });
+
+          if (!existingReminder) {
+            const notification = new NotificationModel({
+              recipientIds: [recipientId],
+              type: 'meeting_reminder',
+              title: 'Meeting Reminder',
+              message: `Reminder: You have a meeting "${meeting.title}" scheduled for today at ${meeting.startTime}${meeting.endTime ? ` - ${meeting.endTime}` : ''}.`,
+              relatedId: meeting._id,
+              relatedModel: 'MeetingScheduleModel',
+              data: {
+                meetingId: meeting._id.toString(),
+                meetingTitle: meeting.title,
+                date: meeting.meetingDate,
+                time: `${meeting.startTime}${meeting.endTime ? ` - ${meeting.endTime}` : ''}`,
+                description: meeting.description,
+                reminderDate: today.toISOString().split('T')[0],
+                action: 'reminder'
+              },
+              priority: 'high',
+              createdByUserId: 'system',
+              updatedByUserId: 'system',
+              published: true
+            });
+
+            await notification.save();
+            createdNotifications.push(notification);
+            console.log(`Meeting reminder notification created for user: ${recipientId}`);
+          }
+        }
+      }
+
+      console.log(`Created ${createdNotifications.length} meeting reminder notifications`);
+      return createdNotifications;
+    } catch (error) {
+      console.error('Error creating meeting reminder notifications:', error);
       throw error;
     }
   }

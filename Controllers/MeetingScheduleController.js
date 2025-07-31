@@ -59,16 +59,22 @@ const Create = async (req, res) => {
             createdMeetings.push(meeting)
             
             // Create notification for the customer
-            await NotificationService.createMeetingNotification({
-                _id: meeting._id,
-                userId: customerId,
-                title: title,
-                date: meetingDate,
-                time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
-                description: description || "",
-                createdByUserId: req.user.id,
-                updatedByUserId: req.user.id
-            }, 'created');
+            try {
+                await NotificationService.createMeetingNotification({
+                    _id: meeting._id,
+                    userId: customerId,
+                    title: title,
+                    date: meetingDate,
+                    time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
+                    description: description || "",
+                    createdByUserId: req.user.id,
+                    updatedByUserId: req.user.id
+                }, 'created');
+                console.log(`Notification created successfully for customer: ${customerId}`);
+            } catch (notificationError) {
+                console.error('Error creating notification for customer:', customerId, notificationError);
+                // Don't fail the meeting creation if notification fails
+            }
         }
 
         return res.status(201).json({
@@ -370,7 +376,9 @@ const DeleteById = async (req, res) => {
             title: result.title,
             date: result.meetingDate,
             time: `${result.startTime}${result.endTime ? ` - ${result.endTime}` : ''}`,
-            description: result.description || ""
+            description: result.description || "",
+            createdByUserId: result.createdByUserId,
+            updatedByUserId: req.user.id
         }, 'deleted');
         
         return res.status(201).json({

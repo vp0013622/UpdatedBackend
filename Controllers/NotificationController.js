@@ -61,10 +61,15 @@ export const GetUserNotifications = async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
 
+    console.log('Getting notifications for user:', userId);
+    console.log('Query parameters:', { page, limit, unreadOnly });
+
     const query = { recipientIds: userId };
     if (unreadOnly === 'true') {
       query.isRead = false;
     }
+
+    console.log('Final query:', query);
 
     const notifications = await NotificationModel.find(query)
       .sort({ createdAt: -1 })
@@ -75,6 +80,9 @@ export const GetUserNotifications = async (req, res) => {
       .populate('createdByUserId', 'firstName lastName')
       .populate('updatedByUserId', 'firstName lastName')
       .exec();
+
+    console.log('Found notifications:', notifications.length);
+    console.log('Notifications:', notifications);
 
     const total = await NotificationModel.countDocuments(query);
 
@@ -125,6 +133,38 @@ export const MarkNotificationAsRead = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error marking notification as read',
+      error: error.message
+    });
+  }
+};
+
+// Mark notification as unread
+export const MarkNotificationAsUnread = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+
+    const notification = await NotificationModel.findByIdAndUpdate(
+      notificationId,
+      { isRead: false },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification marked as unread',
+      data: notification
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error marking notification as unread',
       error: error.message
     });
   }
@@ -187,7 +227,7 @@ export const GetUnreadCount = async (req, res) => {
     const { userId } = req.params;
 
     const count = await NotificationModel.countDocuments({
-      recipientId: userId,
+      recipientIds: userId,
       isRead: false
     });
 
@@ -476,6 +516,28 @@ export const CreateTestNotification = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error creating test notifications',
+      error: error.message
+    });
+  }
+};
+
+// Create meeting reminder notifications for today
+export const CreateMeetingReminders = async (req, res) => {
+  try {
+    const createdNotifications = await NotificationService.createMeetingReminderNotifications();
+
+    res.status(200).json({
+      success: true,
+      message: 'Meeting reminder notifications created successfully',
+      data: {
+        createdCount: createdNotifications.length,
+        notifications: createdNotifications
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error creating meeting reminder notifications',
       error: error.message
     });
   }
