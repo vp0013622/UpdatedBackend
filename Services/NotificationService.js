@@ -8,14 +8,9 @@ class NotificationService {
     try {
       const { userId, title, date, time, description } = meetingData;
       
-      console.log('Creating meeting notification for user:', userId);
-      console.log('Meeting data:', meetingData);
-      
       // Get user details
       const user = await UsersModel.findById(userId);
       if (!user) {
-        console.error('User not found for notification:', userId);
-        console.error('Available users:', await UsersModel.find({}, '_id firstName lastName email'));
         return;
       }
 
@@ -44,12 +39,8 @@ class NotificationService {
       });
 
       await notification.save();
-      console.log(`Meeting notification created for user: ${userId}`);
-      console.log('Notification saved:', notification);
       return notification;
     } catch (error) {
-      console.error('Error creating meeting notification:', error);
-      console.error('Error details:', error.message);
       throw error; // Re-throw to see the error in the calling function
     }
   }
@@ -62,7 +53,6 @@ class NotificationService {
       // Get assigned user details
       const assignedUser = await UsersModel.findById(assignedTo);
       if (!assignedUser) {
-        console.error('Assigned user not found for notification:', assignedTo);
         return;
       }
 
@@ -85,10 +75,9 @@ class NotificationService {
       });
 
       await notification.save();
-      console.log(`Lead assignment notification created for user: ${assignedTo}`);
       return notification;
     } catch (error) {
-      console.error('Error creating lead assignment notification:', error);
+      // Error creating lead assignment notification
     }
   }
 
@@ -99,7 +88,6 @@ class NotificationService {
       const adminUsers = await UsersModel.find({ role: 'admin' });
       
       if (adminUsers.length === 0) {
-        console.error('No admin users found for contact us notification');
         return;
       }
 
@@ -155,10 +143,9 @@ class NotificationService {
       });
 
       await notification.save();
-      console.log(`General notification created for user: ${recipientId}`);
       return notification;
     } catch (error) {
-      console.error('Error creating general notification:', error);
+      // Error creating general notification
     }
   }
 
@@ -190,7 +177,6 @@ class NotificationService {
         }
       };
     } catch (error) {
-      console.error('Error getting user notifications:', error);
       throw error;
     }
   }
@@ -204,7 +190,6 @@ class NotificationService {
       });
       return count;
     } catch (error) {
-      console.error('Error getting unread count:', error);
       throw error;
     }
   }
@@ -219,7 +204,6 @@ class NotificationService {
       );
       return notification;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
       throw error;
     }
   }
@@ -233,7 +217,6 @@ class NotificationService {
       );
       return result.modifiedCount;
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
       throw error;
     }
   }
@@ -257,7 +240,7 @@ class NotificationService {
       }).populate('scheduledByUserId', '_id firstName lastName email')
         .populate('customerId', '_id firstName lastName email');
 
-      console.log(`Found ${todaysMeetings.length} meetings scheduled for today`);
+
 
       const createdNotifications = [];
 
@@ -317,15 +300,12 @@ class NotificationService {
 
             await notification.save();
             createdNotifications.push(notification);
-            console.log(`Meeting reminder notification created for user: ${recipientId}`);
           }
         }
       }
 
-      console.log(`Created ${createdNotifications.length} meeting reminder notifications`);
       return createdNotifications;
     } catch (error) {
-      console.error('Error creating meeting reminder notifications:', error);
       throw error;
     }
   }

@@ -84,7 +84,6 @@ const CreateFeedback = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('CreateFeedback Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -140,7 +139,6 @@ const GetAllFeedback = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('GetAllFeedback Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -173,7 +171,6 @@ const GetFeedbackById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('GetFeedbackById Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -210,7 +207,6 @@ const GetMyFeedback = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('GetMyFeedback Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -277,7 +273,6 @@ const UpdateFeedback = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('UpdateFeedback Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -329,7 +324,6 @@ const DeleteFeedback = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('DeleteFeedback Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -375,7 +369,6 @@ const UpdateFeedbackStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('UpdateFeedbackStatus Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -468,7 +461,6 @@ const GetFeedbackAnalytics = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('GetFeedbackAnalytics Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',
@@ -534,7 +526,6 @@ const GetFeedbackSummary = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('GetFeedbackSummary Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal server error',

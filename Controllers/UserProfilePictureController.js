@@ -240,7 +240,6 @@ const Edit = async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error('Edit error:', error);
     return res.status(500).json({
       message: 'Internal server error: Failed to update user profile picture',
       error: error.message,

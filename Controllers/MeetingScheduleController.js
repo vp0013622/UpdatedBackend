@@ -18,7 +18,6 @@ const Create = async (req, res) => {
             propertyId, 
             notes 
         } = req.body;
-        console.log(req.body);
         if (!title || !meetingDate || !startTime || !status || !customerIds) {
             return res.status(400).json({
                 message: 'Title, meeting date, start time, status, and customer IDs are required',
@@ -70,9 +69,7 @@ const Create = async (req, res) => {
                     createdByUserId: req.user.id,
                     updatedByUserId: req.user.id
                 }, 'created');
-                console.log(`Notification created successfully for customer: ${customerId}`);
             } catch (notificationError) {
-                console.error('Error creating notification for customer:', customerId, notificationError);
                 // Don't fail the meeting creation if notification fails
             }
         }

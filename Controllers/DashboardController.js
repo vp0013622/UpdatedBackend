@@ -69,13 +69,10 @@ export class DashboardController {
     // Get detailed property analytics
     static async getPropertyAnalytics(req, res) {
         try {
-            console.log('--- getPropertyAnalytics called ---');
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
-            console.log('Time frame:', timeFrame, 'Months:', months);
             
             const properties = await PropertyModel.find({ published: true }).populate('propertyTypeId');
-            console.log('Properties found:', properties.length);
             
             // Property status distribution
             const statusDistribution = {};
@@ -83,7 +80,6 @@ export class DashboardController {
                 const status = prop.propertyStatus || 'unknown';
                 statusDistribution[status] = (statusDistribution[status] || 0) + 1;
             });
-            console.log('Status distribution:', statusDistribution);
 
             // Property type distribution
             const typeDistribution = {};
@@ -91,7 +87,6 @@ export class DashboardController {
                 const type = prop.propertyTypeId?.typeName || 'unknown';
                 typeDistribution[type] = (typeDistribution[type] || 0) + 1;
             });
-            console.log('Type distribution:', typeDistribution);
 
             // Price range distribution
             const priceRanges = {
@@ -110,7 +105,6 @@ export class DashboardController {
                 else if (price <= 50000000) priceRanges['2Cr-5Cr']++;
                 else priceRanges['5Cr+']++;
             });
-            console.log('Price ranges:', priceRanges);
 
             // Recent properties based on time frame
             const currentDate = new Date();
@@ -120,7 +114,6 @@ export class DashboardController {
             const recentProperties = properties.filter(prop => 
                 new Date(prop.createdAt) >= timeFrameDate
             );
-            console.log('Recent properties count:', recentProperties.length);
 
             // Sold, active, and total value
             const soldProperties = properties.filter(
@@ -130,7 +123,6 @@ export class DashboardController {
                 p => (p.propertyStatus || '').trim().toLowerCase() === 'active'
             ).length;
             const totalValue = properties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-            console.log('Sold:', soldProperties, 'Active:', activeProperties, 'Total value:', totalValue);
 
             // Property type sales analysis
             const propertyTypeSales = {};
@@ -146,7 +138,6 @@ export class DashboardController {
                 propertyTypeSales[type].totalSales += prop.price || 0;
                 propertyTypeSales[type].count += 1;
             });
-            console.log('Property type sales (before avg):', propertyTypeSales);
 
             // Calculate average price for each type
             Object.keys(propertyTypeSales).forEach(type => {
@@ -154,7 +145,6 @@ export class DashboardController {
                     propertyTypeSales[type].averagePrice = propertyTypeSales[type].totalSales / propertyTypeSales[type].count;
                 }
             });
-            console.log('Property type sales (after avg):', propertyTypeSales);
 
             // Sort by total sales (descending)
             const sortedPropertyTypeSales = Object.entries(propertyTypeSales)
@@ -163,7 +153,6 @@ export class DashboardController {
                     obj[key] = value;
                     return obj;
                 }, {});
-            console.log('Sorted property type sales:', sortedPropertyTypeSales);
 
             res.status(200).json({
                 statusCode: 200,
@@ -184,7 +173,6 @@ export class DashboardController {
                 }
             });
         } catch (error) {
-            console.log('Error in getPropertyAnalytics:', error);
             res.status(500).json({
                 statusCode: 500,
                 message: 'Error retrieving property analytics',

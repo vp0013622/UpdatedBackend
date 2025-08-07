@@ -35,6 +35,11 @@ import MeetingScheduleRouter from './Routes/meetingScheduleRoutes.js'
 import FeedbackRouter from './Routes/feedbackRoutes.js'
 import NotificationRouter from './Routes/notificationRoutes.js'
 
+// Import booking routes
+import RentalBookingRouter from './Routes/booking/rentalBookingRoutes.js'
+import PurchaseBookingRouter from './Routes/booking/purchaseBookingRoutes.js'
+import PaymentHistoryRouter from './Routes/booking/paymentHistoryRoutes.js'
+
 // Import environment configuration
 import config from './config/environment.js'
 import { FavoritePropertyModel } from './Models/FavoritePropertyModel.js'
@@ -250,6 +255,11 @@ app.use('/api/meetingschedulestatus',AuthMiddelware, MeetingScheduleStatusRouter
 app.use('/api/meetingschedule',AuthMiddelware, MeetingScheduleRouter)
 app.use('/api/notifications',AuthMiddelware, NotificationRouter)
 app.use('/api/feedback', FeedbackRouter)
+
+// Booking Routes
+app.use('/api/rental-bookings',AuthMiddelware, RentalBookingRouter)
+app.use('/api/purchase-bookings',AuthMiddelware, PurchaseBookingRouter)
+app.use('/api/payment-history',AuthMiddelware, PaymentHistoryRouter)
 
 
 //document type and document updated in github 02_06_2025

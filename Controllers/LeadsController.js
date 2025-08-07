@@ -78,7 +78,6 @@ const Create = async (req, res) => {
                     });
                 }
             } catch (notificationError) {
-                console.error('Error creating lead assignment notification:', notificationError);
                 // Don't fail the lead creation if notification fails
             }
         }

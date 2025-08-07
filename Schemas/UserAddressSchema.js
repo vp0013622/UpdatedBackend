@@ -35,8 +35,7 @@ export const UserAddressSchema = mongoose.Schema(
           type: {
             lat: { type: Number, required: true },
             lng: { type: Number, required: true }
-          },
-          required: true
+          }
         },
         createdByUserId: {
           type: mongoose.Schema.Types.ObjectId,

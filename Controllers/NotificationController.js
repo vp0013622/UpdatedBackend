@@ -61,15 +61,10 @@ export const GetUserNotifications = async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 20, unreadOnly = false } = req.query;
 
-    console.log('Getting notifications for user:', userId);
-    console.log('Query parameters:', { page, limit, unreadOnly });
-
     const query = { recipientIds: userId };
     if (unreadOnly === 'true') {
       query.isRead = false;
     }
-
-    console.log('Final query:', query);
 
     const notifications = await NotificationModel.find(query)
       .sort({ createdAt: -1 })
@@ -80,9 +75,6 @@ export const GetUserNotifications = async (req, res) => {
       .populate('createdByUserId', 'firstName lastName')
       .populate('updatedByUserId', 'firstName lastName')
       .exec();
-
-    console.log('Found notifications:', notifications.length);
-    console.log('Notifications:', notifications);
 
     const total = await NotificationModel.countDocuments(query);
 

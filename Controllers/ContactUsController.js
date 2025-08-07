@@ -35,7 +35,6 @@ export const Create = async (req, res) => {
                 updatedByUserId: req.user?.id || newContact._id
             });
         } catch (notificationError) {
-            console.error('Error creating contact us notification:', notificationError);
             // Don't fail the contact creation if notification fails
         }
         
