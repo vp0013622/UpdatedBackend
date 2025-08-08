@@ -39,6 +39,7 @@ import NotificationRouter from './Routes/notificationRoutes.js'
 import RentalBookingRouter from './Routes/booking/rentalBookingRoutes.js'
 import PurchaseBookingRouter from './Routes/booking/purchaseBookingRoutes.js'
 import PaymentHistoryRouter from './Routes/booking/paymentHistoryRoutes.js'
+import BookingDocumentRouter from './Routes/booking/bookingDocumentRoutes.js'
 
 // Import environment configuration
 import config from './config/environment.js'
@@ -260,6 +261,7 @@ app.use('/api/feedback', FeedbackRouter)
 app.use('/api/rental-bookings',AuthMiddelware, RentalBookingRouter)
 app.use('/api/purchase-bookings',AuthMiddelware, PurchaseBookingRouter)
 app.use('/api/payment-history',AuthMiddelware, PaymentHistoryRouter)
+app.use('/api/booking-documents',AuthMiddelware, BookingDocumentRouter)
 
 
 //document type and document updated in github 02_06_2025
