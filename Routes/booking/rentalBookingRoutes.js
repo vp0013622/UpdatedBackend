@@ -10,7 +10,8 @@ import {
     GetRentSchedule, 
     UpdateMonthStatus, 
     GetPendingRents, 
-    GetOverdueRents 
+    GetOverdueRents,
+    GetMyRentalBookings
 } from '../../Controllers/booking/RentalBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -23,6 +24,9 @@ RentalBookingRouter.post('/create', RoleAuthMiddleware("admin", "sales", "execut
 
 // Get all rental bookings with populated property, customer, and salesperson details
 RentalBookingRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executive"), GetAllRentalBookings)
+
+// Get user's own rental bookings (accessible to all authenticated users)
+RentalBookingRouter.get('/my-bookings/:userId', AuthMiddelware, GetMyRentalBookings)
 
 // Get a specific rental booking by ID with populated details
 RentalBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive"), GetRentalBookingById)

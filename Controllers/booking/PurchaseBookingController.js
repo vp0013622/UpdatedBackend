@@ -602,6 +602,43 @@ const GetOverdueInstallments = async (req, res) => {
     }
 };
 
+/**
+ * Get user's own purchase bookings (where user is the customer)
+ * Returns clean purchase booking data without populates
+ */
+const GetMyPurchaseBookings = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const myBookings = await PurchaseBookingModel.find({
+            customerId: userId,
+            published: true
+        }).select({
+            _id: 1,
+            bookingStatus: 1,
+            totalPropertyValue: 1,
+            downPayment: 1,
+            loanAmount: 1,
+            paymentTerms: 1,
+            installmentCount: 1,
+            propertyId: 1,
+            createdAt: 1
+        }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            message: 'My purchase bookings retrieved successfully',
+            count: myBookings.length,
+            data: myBookings
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 export {
     Create,
     GetAllPurchaseBookings,
@@ -613,5 +650,6 @@ export {
     GetInstallmentSchedule,
     UpdateInstallmentStatus,
     GetPendingInstallments,
-    GetOverdueInstallments
+    GetOverdueInstallments,
+    GetMyPurchaseBookings
 }; 

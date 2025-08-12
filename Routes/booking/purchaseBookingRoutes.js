@@ -10,7 +10,8 @@ import {
     GetInstallmentSchedule, 
     UpdateInstallmentStatus, 
     GetPendingInstallments, 
-    GetOverdueInstallments 
+    GetOverdueInstallments,
+    GetMyPurchaseBookings
 } from '../../Controllers/booking/PurchaseBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -23,6 +24,9 @@ PurchaseBookingRouter.post('/create', RoleAuthMiddleware("admin", "sales", "exec
 
 // Get all purchase bookings with populated property, customer, and salesperson details
 PurchaseBookingRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executive"), GetAllPurchaseBookings)
+
+// Get user's own purchase bookings (accessible to all authenticated users)
+PurchaseBookingRouter.get('/my-bookings/:userId', AuthMiddelware, GetMyPurchaseBookings)
 
 // Get a specific purchase booking by ID with populated details
 PurchaseBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive"), GetPurchaseBookingById)

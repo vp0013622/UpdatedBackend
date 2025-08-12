@@ -592,6 +592,43 @@ const GetOverdueRents = async (req, res) => {
     }
 };
 
+/**
+ * Get user's own rental bookings (where user is the customer)
+ * Returns clean rental booking data without populates
+ */
+const GetMyRentalBookings = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const myBookings = await RentalBookingModel.find({
+            customerId: userId,
+            published: true
+        }).select({
+            _id: 1,
+            bookingStatus: 1,
+            startDate: 1,
+            endDate: 1,
+            monthlyRent: 1,
+            securityDeposit: 1,
+            maintenanceCharges: 1,
+            propertyId: 1,
+            createdAt: 1
+        }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            message: 'My rental bookings retrieved successfully',
+            count: myBookings.length,
+            data: myBookings
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 export {
     Create,
     GetAllRentalBookings,
@@ -603,5 +640,6 @@ export {
     GetRentSchedule,
     UpdateMonthStatus,
     GetPendingRents,
-    GetOverdueRents
+    GetOverdueRents,
+    GetMyRentalBookings
 }; 
