@@ -118,7 +118,7 @@ class NotificationService {
 
         await notification.save();
         notifications.push(notification);
-        console.log(`Contact us notification created for admin: ${admin._id}`);
+        // Contact us notification created for admin
       }
 
       return notifications;

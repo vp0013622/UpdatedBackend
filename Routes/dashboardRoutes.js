@@ -38,6 +38,9 @@ router.get('/lead-conversion', AuthMiddelware, RoleAuthMiddleware("admin", "sale
 // Get financial summary
 router.get('/financial-summary', AuthMiddelware, RoleAuthMiddleware("admin", "sales", "executive", "user", "saller"), DashboardController.getFinancialSummary);
 
+// Get today's schedules
+router.get('/today-schedules', AuthMiddelware, RoleAuthMiddleware("admin", "sales", "executive", "user", "saller"), DashboardController.getTodaySchedules);
+
 // Get admin performance analytics (overall company performance)
 router.get('/admin/performance', AuthMiddelware, RoleAuthMiddleware("admin"), DashboardController.getAdminPerformanceAnalytics);
 

@@ -1,0 +1,47 @@
+{
+  "testRentalBooking1": {
+    "propertyId": "507f1f77bcf86cd799439011",
+    "customerId": "507f1f77bcf86cd799439012",
+    "assignedSalespersonId": "507f1f77bcf86cd799439013",
+    "startDate": "2024-01-01T00:00:00.000Z",
+    "endDate": "2024-12-31T23:59:59.999Z",
+    "monthlyRent": 2500,
+    "securityDeposit": 5000,
+    "maintenanceCharges": 200,
+    "advanceRent": 2,
+    "rentDueDate": 5
+  },
+  "testRentalBooking2": {
+    "propertyId": "507f1f77bcf86cd799439014",
+    "customerId": "507f1f77bcf86cd799439015",
+    "assignedSalespersonId": "507f1f77bcf86cd799439016",
+    "startDate": "2024-02-01T00:00:00.000Z",
+    "endDate": "2025-01-31T23:59:59.999Z",
+    "monthlyRent": 3500,
+    "securityDeposit": 7000,
+    "maintenanceCharges": 300,
+    "advanceRent": 1,
+    "rentDueDate": 10
+  },
+  "testRentalBooking3": {
+    "propertyId": "507f1f77bcf86cd799439017",
+    "customerId": "507f1f77bcf86cd799439018",
+    "assignedSalespersonId": "507f1f77bcf86cd799439019",
+    "startDate": "2024-03-01T00:00:00.000Z",
+    "endDate": "2025-02-28T23:59:59.999Z",
+    "monthlyRent": 1800,
+    "securityDeposit": 3600,
+    "maintenanceCharges": 150,
+    "advanceRent": 0,
+    "rentDueDate": 15
+  },
+  "minimalRentalBooking": {
+    "propertyId": "507f1f77bcf86cd799439011",
+    "customerId": "507f1f77bcf86cd799439012",
+    "assignedSalespersonId": "507f1f77bcf86cd799439013",
+    "startDate": "2024-01-01T00:00:00.000Z",
+    "endDate": "2024-12-31T23:59:59.999Z",
+    "monthlyRent": 2500,
+    "rentDueDate": 5
+  }
+}

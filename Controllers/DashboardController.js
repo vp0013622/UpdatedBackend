@@ -3,6 +3,7 @@ import { LeadsModel } from '../Models/LeadsModel.js';
 import { UsersModel } from '../Models/UsersModel.js';
 import { FollowUpStatusModel } from '../Models/FollowUpStatusModel.js';
 import { LeadStatusModel } from '../Models/LeadStatusModel.js';
+import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 
 export class DashboardController {
     // Get overall dashboard statistics
@@ -22,14 +23,7 @@ export class DashboardController {
             const totalSales = soldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
 
             // Debugging logs
-            // console.log('--- DASHBOARD DEBUG ---');
-            // console.log('Total properties:', allProperties.length);
-            // console.log('Sold properties:', soldProperties.length);
-            // console.log('Unsold properties:', unsoldProperties.length);
-            // console.log('Total sales value:', totalSales);
-            // if (soldProperties.length > 0) {
-            //     console.log('Sample sold property:', soldProperties[0]);
-            // }
+            
 
             // Get counts
             const totalLeads = await LeadsModel.countDocuments({ published: true });
@@ -41,6 +35,30 @@ export class DashboardController {
 
             // Calculate average rating (placeholder for now)
             const averageRating = 4.5;
+
+            // Get today's and tomorrow's schedules
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dayAfterTomorrow = new Date(today);
+            dayAfterTomorrow.setDate(today.getDate() + 2);
+
+            const todaySchedules = await MeetingScheduleModel.countDocuments({
+                meetingDate: {
+                    $gte: today,
+                    $lt: tomorrow
+                },
+                published: true
+            });
+
+            const tomorrowSchedules = await MeetingScheduleModel.countDocuments({
+                meetingDate: {
+                    $gte: tomorrow,
+                    $lt: dayAfterTomorrow
+                },
+                published: true
+            });
 
             res.status(200).json({
                 statusCode: 200,
@@ -54,7 +72,9 @@ export class DashboardController {
                     totalUsers,
                     activeLeads,
                     pendingFollowups,
-                    averageRating
+                    averageRating,
+                    todaySchedules,
+                    tomorrowSchedules
                 }
             });
         } catch (error) {
@@ -873,6 +893,40 @@ export class DashboardController {
                 return 24;
             default:
                 return 12; // Default to 12 months
+        }
+    }
+
+    // Get today's schedules
+    static async getTodaySchedules(req, res) {
+        try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const todaysSchedules = await MeetingScheduleModel.find({
+                meetingDate: {
+                    $gte: today,
+                    $lt: tomorrow
+                },
+                published: true
+            }).populate('scheduledByUserId', 'firstName lastName')
+              .populate('customerId', 'firstName lastName')
+              .populate('propertyId', 'name')
+              .populate('status', 'name statusCode')
+              .sort({ startTime: 1 });
+
+            res.status(200).json({
+                statusCode: 200,
+                message: 'Today\'s schedules retrieved successfully',
+                data: todaysSchedules
+            });
+        } catch (error) {
+            res.status(500).json({
+                statusCode: 500,
+                message: 'Error retrieving today\'s schedules',
+                error: error.message
+            });
         }
     }
 } 

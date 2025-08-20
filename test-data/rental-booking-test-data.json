@@ -1,0 +1,140 @@
+{
+  "rentalBookings": [
+    {
+      "propertyId": "507f1f77bcf86cd799439011",
+      "customerId": "507f1f77bcf86cd799439012",
+      "assignedSalespersonId": "507f1f77bcf86cd799439013",
+      "startDate": "2024-01-01T00:00:00.000Z",
+      "endDate": "2024-12-31T23:59:59.999Z",
+      "monthlyRent": 2500,
+      "securityDeposit": 5000,
+      "maintenanceCharges": 200,
+      "advanceRent": 2,
+      "rentDueDate": 5,
+      "lateFeePercentage": 5
+    },
+    {
+      "propertyId": "507f1f77bcf86cd799439014",
+      "customerId": "507f1f77bcf86cd799439015",
+      "assignedSalespersonId": "507f1f77bcf86cd799439016",
+      "startDate": "2024-02-01T00:00:00.000Z",
+      "endDate": "2025-01-31T23:59:59.999Z",
+      "monthlyRent": 3500,
+      "securityDeposit": 7000,
+      "maintenanceCharges": 300,
+      "advanceRent": 1,
+      "rentDueDate": 10,
+      "lateFeePercentage": 3
+    },
+    {
+      "propertyId": "507f1f77bcf86cd799439017",
+      "customerId": "507f1f77bcf86cd799439018",
+      "assignedSalespersonId": "507f1f77bcf86cd799439019",
+      "startDate": "2024-03-01T00:00:00.000Z",
+      "endDate": "2025-02-28T23:59:59.999Z",
+      "monthlyRent": 1800,
+      "securityDeposit": 3600,
+      "maintenanceCharges": 150,
+      "advanceRent": 0,
+      "rentDueDate": 15,
+      "lateFeePercentage": 7
+    }
+  ],
+  "samplePropertyIds": [
+    "507f1f77bcf86cd799439011",
+    "507f1f77bcf86cd799439014",
+    "507f1f77bcf86cd799439017"
+  ],
+  "sampleCustomerIds": [
+    "507f1f77bcf86cd799439012",
+    "507f1f77bcf86cd799439015",
+    "507f1f77bcf86cd799439018"
+  ],
+  "sampleSalespersonIds": [
+    "507f1f77bcf86cd799439013",
+    "507f1f77bcf86cd799439016",
+    "507f1f77bcf86cd799439019"
+  ],
+  "apiEndpoints": {
+    "create": "POST /api/rental-booking/create",
+    "getAll": "GET /api/rental-booking/all",
+    "getById": "GET /api/rental-booking/:id",
+    "update": "PUT /api/rental-booking/update/:id",
+    "delete": "DELETE /api/rental-booking/delete/:id",
+    "recordPayment": "POST /api/rental-booking/:id/record-rent-payment",
+    "getRentSchedule": "GET /api/rental-booking/:id/rent-schedule",
+    "updateMonthStatus": "PUT /api/rental-booking/:id/update-month-status",
+    "getPendingRents": "GET /api/rental-booking/reports/pending-rents",
+    "getOverdueRents": "GET /api/rental-booking/reports/overdue-rents"
+  },
+  "requiredFields": [
+    "propertyId",
+    "customerId", 
+    "assignedSalespersonId",
+    "startDate",
+    "endDate",
+    "monthlyRent",
+    "rentDueDate"
+  ],
+  "optionalFields": [
+    "securityDeposit",
+    "maintenanceCharges",
+    "advanceRent",
+    "lateFeePercentage"
+  ],
+  "fieldDescriptions": {
+    "propertyId": "MongoDB ObjectId of existing property",
+    "customerId": "MongoDB ObjectId of existing customer/user",
+    "assignedSalespersonId": "MongoDB ObjectId of existing salesperson/user",
+    "startDate": "ISO date string for rental start",
+    "endDate": "ISO date string for rental end",
+    "monthlyRent": "Monthly rent amount in currency units",
+    "securityDeposit": "Security deposit amount (defaults to 0)",
+    "maintenanceCharges": "Monthly maintenance charges (defaults to 0)",
+    "advanceRent": "Number of months of advance rent paid (defaults to 0)",
+    "rentDueDate": "Day of month when rent is due (1-31)",
+    "lateFeePercentage": "Late fee percentage for overdue payments (defaults to 5)"
+  },
+  "testScenarios": {
+    "validBooking": {
+      "description": "Complete valid rental booking",
+      "data": {
+        "propertyId": "507f1f77bcf86cd799439011",
+        "customerId": "507f1f77bcf86cd799439012",
+        "assignedSalespersonId": "507f1f77bcf86cd799439013",
+        "startDate": "2024-01-01T00:00:00.000Z",
+        "endDate": "2024-12-31T23:59:59.999Z",
+        "monthlyRent": 2500,
+        "securityDeposit": 5000,
+        "maintenanceCharges": 200,
+        "advanceRent": 2,
+        "rentDueDate": 5
+      }
+    },
+    "minimalBooking": {
+      "description": "Minimal required fields only",
+      "data": {
+        "propertyId": "507f1f77bcf86cd799439011",
+        "customerId": "507f1f77bcf86cd799439012",
+        "assignedSalespersonId": "507f1f77bcf86cd799439013",
+        "startDate": "2024-01-01T00:00:00.000Z",
+        "endDate": "2024-12-31T23:59:59.999Z",
+        "monthlyRent": 2500,
+        "rentDueDate": 5
+      }
+    },
+    "invalidBooking": {
+      "description": "Missing required fields",
+      "data": {
+        "propertyId": "507f1f77bcf86cd799439011",
+        "customerId": "507f1f77bcf86cd799439012"
+        // Missing assignedSalespersonId, startDate, endDate, monthlyRent, rentDueDate
+      }
+    }
+  },
+  "curlExamples": {
+    "createValid": "curl -X POST http://localhost:3001/api/rental-booking/create \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \\\n  -d '{\n    \"propertyId\": \"507f1f77bcf86cd799439011\",\n    \"customerId\": \"507f1f77bcf86cd799439012\",\n    \"assignedSalespersonId\": \"507f1f77bcf86cd799439013\",\n    \"startDate\": \"2024-01-01T00:00:00.000Z\",\n    \"endDate\": \"2024-12-31T23:59:59.999Z\",\n    \"monthlyRent\": 2500,\n    \"securityDeposit\": 5000,\n    \"maintenanceCharges\": 200,\n    \"advanceRent\": 2,\n    \"rentDueDate\": 5\n  }'",
+    "getAll": "curl -X GET http://localhost:3001/api/rental-booking/all \\\n  -H 'Authorization: Bearer YOUR_JWT_TOKEN'",
+    "getById": "curl -X GET http://localhost:3001/api/rental-booking/BOOKING_ID_HERE \\\n  -H 'Authorization: Bearer YOUR_JWT_TOKEN'"
+  }
+}
