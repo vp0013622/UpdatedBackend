@@ -92,6 +92,7 @@ const Create = async (req, res) => {
 const GetAllMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: true })
+            .sort({ createdAt: -1 })
             .populate('status', 'name statusCode description')
 
         // Get status counts
@@ -160,7 +161,8 @@ const GetMyMeetings = async (req, res) => {
         const meetings = await MeetingScheduleModel.find({
             published: true,
             customerId: id
-        });
+        })
+        .sort({ createdAt: -1 });
 
         
         // Get status counts for user's meetings
@@ -229,6 +231,7 @@ const GetMyMeetings = async (req, res) => {
 const GetAllNotPublishedMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: false })
+            .sort({ createdAt: -1 })
 
         return res.status(200).json({
             message: 'all not published meeting schedules',
@@ -248,6 +251,7 @@ const GetMeetingScheduleById = async (req, res) => {
     try {
         var { id } = req.params
         const meeting = await MeetingScheduleModel.find({scheduledByUserId: id})
+            .sort({ createdAt: -1 })
             .populate('status', 'name statusCode description')
 
         if (meeting == null) {

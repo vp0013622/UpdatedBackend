@@ -42,7 +42,8 @@ const Create = async (req, res) => {
 
 const GetAllUserAddress = async (req, res) => {
     try {
-        const userAddress = await UserAddressModel.find({ published: true });
+        const userAddress = await UserAddressModel.find({ published: true })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all userAddress',
             count: userAddress.length,
@@ -59,7 +60,8 @@ const GetAllUserAddress = async (req, res) => {
 
 const GetAllNotPublishedUserAddress = async (req, res) => {
     try {
-        const userAddress = await UserAddressModel.find({ published: false });
+        const userAddress = await UserAddressModel.find({ published: false })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all not published userAddress',
             count: userAddress.length,
@@ -113,7 +115,8 @@ const GetAllUserAddressWithParams = async (req, res) => {
             filter.published = published;
         }
 
-        const userAddress = await UserAddressModel.find(filter);
+        const userAddress = await UserAddressModel.find(filter)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'all userAddress',
@@ -156,6 +159,7 @@ const GetUserAddressByUserId = async (req, res) => {
     try {
         var { id } = req.params
         const userAddress = await UserAddressModel.find({userId: id})
+            .sort({ createdAt: -1 })
         if (userAddress == null) {
             return res.status(404).json({
                 message: 'userAddress not found',

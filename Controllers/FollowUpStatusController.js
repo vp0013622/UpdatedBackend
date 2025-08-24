@@ -34,6 +34,7 @@ export const Create = async (req, res) => {
 export const GetAll = async (req, res) => {
     try {
         const statuses = await FollowUpStatusModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'Follow up statuses retrieved successfully',
             count: statuses.length,
@@ -50,6 +51,7 @@ export const GetAll = async (req, res) => {
 export const GetAllNotPublished = async (req, res) => {
     try {
         const statuses = await FollowUpStatusModel.find({ published: false })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'All not published follow up statuses',
             count: statuses.length,
@@ -73,6 +75,7 @@ export const GetAllWithParams = async (req, res) => {
         if (published !== null) filter.published = published
 
         const statuses = await FollowUpStatusModel.find(filter)
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'Follow up statuses retrieved successfully',
             count: statuses.length,

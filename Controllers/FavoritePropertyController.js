@@ -43,7 +43,8 @@ const Create = async (req, res) => {
 
 const GetAllFavoriteProperty = async (req, res) => {
     try {
-        const favoriteProperty = await FavoritePropertyModel.find({ published: true });
+        const favoriteProperty = await FavoritePropertyModel.find({ published: true })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all favorite property',
             count: favoriteProperty.length,
@@ -62,6 +63,7 @@ const GetAllFavoritePropertyByUserId = async (req, res) => {
     try {
         var { id } = req.params
         const favoriteProperty = await FavoritePropertyModel.find({ userId: id })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'all favorite property by user id',
             data: favoriteProperty
@@ -77,7 +79,8 @@ const GetAllFavoritePropertyByUserId = async (req, res) => {
 
 const GetAllNotPublishedFavoriteProperty = async (req, res) => {
     try {
-        const favoriteProperty = await FavoritePropertyModel.find({ published: false });
+        const favoriteProperty = await FavoritePropertyModel.find({ published: false })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all not published favorite property',
             count: favoriteProperty.length,
@@ -119,7 +122,8 @@ const GetAllFavoritePropertyWithParams = async (req, res) => {
             filter.published = published;
         }
 
-        const favoriteProperty = await FavoritePropertyModel.find(filter);
+        const favoriteProperty = await FavoritePropertyModel.find(filter)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'all favorite property',

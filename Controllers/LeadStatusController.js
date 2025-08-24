@@ -34,6 +34,7 @@ export const Create = async (req, res) => {
 export const GetAll = async (req, res) => {
     try {
         const statuses = await LeadStatusModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'Lead statuses retrieved successfully',
             count: statuses.length,

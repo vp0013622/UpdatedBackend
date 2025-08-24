@@ -9,6 +9,7 @@ import { PurchaseBookingModel } from "../../Models/booking/PurchaseBookingModel.
 const GetAllPaymentHistory = async (req, res) => {
     try {
         const payments = await PaymentHistoryModel.find({ published: true })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -76,6 +77,7 @@ const GetPaymentsByBookingId = async (req, res) => {
             bookingId: bookingId,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
             .populate('approvedByUserId')
@@ -107,6 +109,7 @@ const GetPaymentsByResponsiblePerson = async (req, res) => {
             responsiblePersonId: responsiblePersonId,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -150,6 +153,7 @@ const GetPaymentsByDateRange = async (req, res) => {
             },
             published: true
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -182,6 +186,7 @@ const GetPaymentsByType = async (req, res) => {
             paymentType: paymentType,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -214,6 +219,7 @@ const GetPaymentsByBookingType = async (req, res) => {
             bookingType: bookingType,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -449,6 +455,7 @@ const GetPaymentsByStatus = async (req, res) => {
             paymentStatus: status,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')
@@ -480,6 +487,7 @@ const GetUnreconciledPayments = async (req, res) => {
             isReconciled: false,
             published: true 
         })
+            .sort({ createdAt: -1 })
             .populate('bookingId')
             .populate('responsiblePersonId')
             .populate('recordedByUserId')

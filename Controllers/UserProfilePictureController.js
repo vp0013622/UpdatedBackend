@@ -91,7 +91,8 @@ const Create = async (req, res) => {
 
 const GetAllUserProfilePicture = async (req, res) => {
     try {
-        const userProfilePictures = await UserProfilePictureModel.find({ published: true });
+        const userProfilePictures = await UserProfilePictureModel.find({ published: true })
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'All user profile pictures retrieved successfully',
@@ -130,7 +131,8 @@ const GetAllUserProfilePictureWithParams = async (req, res) => {
             filter.published = published;
         }
 
-        const userProfilePicture = await UserProfilePictureModel.find(filter);
+        const userProfilePicture = await UserProfilePictureModel.find(filter)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'User profile pictures filtered and retrieved successfully',

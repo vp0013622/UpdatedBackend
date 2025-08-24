@@ -54,6 +54,7 @@ const Create = async (req, res) => {
 const GetAllProperty = async (req, res) => {
     try {
         const properties = await PropertyModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'all properties',
             count: properties.length,
@@ -119,7 +120,7 @@ const GetAllPropertyWithParams = async (req, res) => {
         }
 
         const properties = await PropertyModel.find(filter)
-
+            .sort({ createdAt: -1 })
 
         return res.status(200).json({
             message: 'all properties',

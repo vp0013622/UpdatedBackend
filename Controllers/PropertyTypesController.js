@@ -36,7 +36,8 @@ const Create = async (req, res) => {
 
 const GetAllPropertyTypes = async (req, res) => {
     try {
-        const propertyTypes = await PropertyTypesModel.find({ published: true });
+        const propertyTypes = await PropertyTypesModel.find({ published: true })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all propertyTypes',
             count: propertyTypes.length,
@@ -53,7 +54,8 @@ const GetAllPropertyTypes = async (req, res) => {
 
 const GetAllNotPublishedPropertyTypes = async (req, res) => {
     try {
-        const propertyTypes = await PropertyTypesModel.find({ published: false });
+        const propertyTypes = await PropertyTypesModel.find({ published: false })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all not published propertyTypes',
             count: propertyTypes.length,
@@ -91,7 +93,8 @@ const GetAllPropertyTypesWithParams = async (req, res) => {
             filter.published = published;
         }
 
-        const propertyTypes = await PropertyTypesModel.find(filter);
+        const propertyTypes = await PropertyTypesModel.find(filter)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'all propertyTypes',

@@ -97,6 +97,7 @@ const Create = async (req, res) => {
 const GetAllLeads = async (req, res) => {
     try {
         const leads = await LeadsModel.find({ published: true })
+            .sort({ createdAt: -1 })
             .populate('userId')
             .populate('leadStatus')
             .populate('referanceFrom')
@@ -121,6 +122,7 @@ const GetAllLeads = async (req, res) => {
 const GetAllNotPublishedLeads = async (req, res) => {
     try {
         const leads = await LeadsModel.find({ published: false })
+            .sort({ createdAt: -1 })
             .populate('userId')
             .populate('leadStatus')
             .populate('referanceFrom')
@@ -175,6 +177,7 @@ const GetAllLeadsWithParams = async (req, res) => {
         }
 
         const leads = await LeadsModel.find(filter)
+            .sort({ createdAt: -1 })
             .populate('userId')
             .populate('leadStatus')
             .populate('referanceFrom')

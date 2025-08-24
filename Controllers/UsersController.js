@@ -63,6 +63,7 @@ const Register = async (req, res) => {
 const GetAllUsers = async (req, res) => {
     try {
         const users = await UsersModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'all users',
             count: users.length,
@@ -79,7 +80,8 @@ const GetAllUsers = async (req, res) => {
 
 const GetAllNotPublishedUsers = async (req, res) => {
     try {
-        const users = await UsersModel.find({ published: false });
+        const users = await UsersModel.find({ published: false })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all not published users',
             count: users.length,
@@ -102,29 +104,24 @@ const GetAllUsersWithParams = async (req, res) => {
         if (email !== null) {
             filter.email = { $regex: email, $options: "i" }
         }
-
         if (firstName !== null) {
             filter.firstName = { $regex: firstName, $options: "i" }
         }
-
         if (lastName !== null) {
             filter.lastName = { $regex: lastName, $options: "i" }
         }
-
         if (phoneNumber !== null) {
-            filter.phoneNumber = phoneNumber
+            filter.phoneNumber = { $regex: phoneNumber, $options: "i" }
         }
-
         if (roleId !== null) {
             filter.role = roleId
         }
-
         if (published !== null) {
             filter.published = published
         }
 
-        const users = await UsersModel.find(filter);
-
+        const users = await UsersModel.find(filter)
+            .sort({ createdAt: -1 })
 
         return res.status(200).json({
             message: 'all users',

@@ -38,6 +38,7 @@ const Create = async (req, res) => {
 const GetAllDocumentTypes = async (req, res) => {
     try {
         const documentTypes = await DocumentTypesModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'All document types',
             count: documentTypes.length,
@@ -54,6 +55,7 @@ const GetAllDocumentTypes = async (req, res) => {
 const GetAllNotPublishedDocumentTypes = async (req, res) => {
     try {
         const documentTypes = await DocumentTypesModel.find({ published: false })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'All not published document types',
             count: documentTypes.length,
@@ -84,6 +86,7 @@ const GetAllDocumentTypesWithParams = async (req, res) => {
         }
 
         const documentTypes = await DocumentTypesModel.find(filter)
+            .sort({ createdAt: -1 })
 
         return res.status(200).json({
             message: 'Filtered document types',

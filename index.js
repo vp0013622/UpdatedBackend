@@ -45,6 +45,8 @@ import BookingDocumentRouter from './Routes/booking/bookingDocumentRoutes.js'
 import config from './config/environment.js'
 import { FavoritePropertyModel } from './Models/FavoritePropertyModel.js'
 
+
+
 const PORT = config.PORT
 const DB_CONNECTION_STRING = config.DB_CONNECTION_STRING
 const SALT = 10 // Added salt rounds for bcrypt

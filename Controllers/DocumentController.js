@@ -99,7 +99,8 @@ const Create = async (req, res) => {
 const GetAllDocument = async (req, res) => {
   try {
     // Only management roles can view all documents
-    const documents = await DocumentModel.find({ published: true });
+    const documents = await DocumentModel.find({ published: true })
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       message: 'All documents retrieved successfully',
@@ -147,7 +148,8 @@ const GetAllDocumentWithParams = async (req, res) => {
     }
 
     // Only management roles can filter documents
-    const documents = await DocumentModel.find(filter);
+    const documents = await DocumentModel.find(filter)
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       message: 'Documents filtered and retrieved successfully',

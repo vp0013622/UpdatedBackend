@@ -53,6 +53,7 @@ export const Create = async (req, res) => {
 export const GetAll = async (req, res) => {
     try {
         const contacts = await ContactUsModel.find({ published: true })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'Contact us messages retrieved successfully',
             count: contacts.length,
@@ -69,6 +70,7 @@ export const GetAll = async (req, res) => {
 export const GetAllNotPublished = async (req, res) => {
     try {
         const contacts = await ContactUsModel.find({ published: false })
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'All not published contact us messages',
             count: contacts.length,
@@ -94,6 +96,7 @@ export const GetAllWithParams = async (req, res) => {
         if (published !== null) filter.published = published
 
         const contacts = await ContactUsModel.find(filter)
+            .sort({ createdAt: -1 })
         return res.status(200).json({
             message: 'Contact us messages retrieved successfully',
             count: contacts.length,

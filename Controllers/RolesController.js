@@ -36,7 +36,8 @@ const Create = async (req, res) => {
 
 const GetAllRoles = async (req, res) => {
     try {
-        const roles = await RolesModel.find({ published: true });
+        const roles = await RolesModel.find({ published: true })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all roles',
             count: roles.length,
@@ -53,7 +54,8 @@ const GetAllRoles = async (req, res) => {
 
 const GetAllNotPublishedRoles = async (req, res) => {
     try {
-        const roles = await RolesModel.find({ published: false });
+        const roles = await RolesModel.find({ published: false })
+            .sort({ createdAt: -1 });
         return res.status(200).json({
             message: 'all not published roles',
             count: roles.length,
@@ -91,7 +93,8 @@ const GetAllRolesWithParams = async (req, res) => {
             filter.published = published;
         }
 
-        const roles = await RolesModel.find(filter);
+        const roles = await RolesModel.find(filter)
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'all roles',
