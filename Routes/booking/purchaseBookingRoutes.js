@@ -11,7 +11,8 @@ import {
     UpdateInstallmentStatus, 
     GetPendingInstallments, 
     GetOverdueInstallments,
-    GetMyPurchaseBookings
+    GetMyPurchaseBookings,
+    ConfirmPurchaseBooking
 } from '../../Controllers/booking/PurchaseBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -33,6 +34,9 @@ PurchaseBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executiv
 
 // Update purchase booking details (property, payment terms, financing details, etc.)
 PurchaseBookingRouter.put('/update/:id', RoleAuthMiddleware("admin", "sales", "executive"), UpdatePurchaseBooking)
+
+// Confirm a purchase booking (change status to CONFIRMED)
+PurchaseBookingRouter.put('/confirm/:id', RoleAuthMiddleware("admin", "sales", "executive"), ConfirmPurchaseBooking)
 
 // Soft delete a purchase booking (sets published to false)
 PurchaseBookingRouter.delete('/delete/:id', RoleAuthMiddleware("admin"), DeletePurchaseBooking)

@@ -593,6 +593,62 @@ const GetOverdueRents = async (req, res) => {
 };
 
 /**
+ * Confirm a rental booking (change status from PENDING to ACTIVE)
+ * This is typically done after initial verification and approval
+ */
+const ConfirmRentalBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const rentalBooking = await RentalBookingModel.findOne({ bookingId: id });
+        if (!rentalBooking) {
+            return res.status(404).json({
+                message: 'Rental booking not found',
+                data: null
+            });
+        }
+
+        if (rentalBooking.bookingStatus === 'ACTIVE') {
+            return res.status(400).json({
+                message: 'Rental booking is already active',
+                data: rentalBooking
+            });
+        }
+
+        if (rentalBooking.bookingStatus === 'CANCELLED') {
+            return res.status(400).json({
+                message: 'Cannot confirm a cancelled booking',
+                data: rentalBooking
+            });
+        }
+
+        // Update status to ACTIVE
+        rentalBooking.bookingStatus = 'ACTIVE';
+        rentalBooking.updatedByUserId = req.user.id;
+        rentalBooking.updatedAt = new Date();
+        
+        await rentalBooking.save();
+
+        // Populate the updated booking
+        const updatedBooking = await RentalBookingModel.findById(rentalBooking._id)
+            .populate('propertyId')
+            .populate('customerId')
+            .populate('assignedSalespersonId');
+
+        return res.status(200).json({
+            message: 'Rental booking confirmed successfully',
+            data: updatedBooking
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
  * Get user's own rental bookings (where user is the customer)
  * Returns clean rental booking data without populates
  */
@@ -641,5 +697,6 @@ export {
     UpdateMonthStatus,
     GetPendingRents,
     GetOverdueRents,
-    GetMyRentalBookings
+    GetMyRentalBookings,
+    ConfirmRentalBooking
 }; 

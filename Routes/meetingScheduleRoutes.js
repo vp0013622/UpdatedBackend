@@ -1,5 +1,5 @@
 import express from 'express'
-import { Create, GetAllMeetingSchedules, GetMyMeetings, GetAllNotPublishedMeetingSchedules, GetMeetingScheduleById, Edit, DeleteById } from '../Controllers/MeetingScheduleController.js'
+import { Create, GetAllMeetingSchedules, GetMyMeetings, GetAllNotPublishedMeetingSchedules, GetMeetingScheduleById, GetMeetingById, Edit, DeleteById } from '../Controllers/MeetingScheduleController.js'
 import { RoleAuthMiddleware } from '../Middlewares/RoleAuthMiddelware.js'
 
 const MeetingScheduleRouter = express.Router()
@@ -8,6 +8,7 @@ MeetingScheduleRouter.get('/', RoleAuthMiddleware("admin", "executive"), GetAllM
 MeetingScheduleRouter.get('/my-meetings/:id', RoleAuthMiddleware("admin", "sales", "executive", "saller", "user"), GetMyMeetings)//my meetings
 MeetingScheduleRouter.get('/notpublished', RoleAuthMiddleware("admin"), GetAllNotPublishedMeetingSchedules)//only for admin
 MeetingScheduleRouter.get('/scheduledByUserId/:id', RoleAuthMiddleware("admin", "sales", "executive"), GetMeetingScheduleById)//public access to get meeting schedule by id
+MeetingScheduleRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive", "saller", "user"), GetMeetingById)//get meeting details by meeting id
 MeetingScheduleRouter.put('/edit/:id', RoleAuthMiddleware("admin", "sales", "executive"), Edit)//admin, sales, executive can edit meeting schedule
 MeetingScheduleRouter.delete('/delete/:id', RoleAuthMiddleware("admin", "sales", "executive"), DeleteById)//admin, sales, executive
 export default MeetingScheduleRouter 

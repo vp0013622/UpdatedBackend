@@ -9,12 +9,12 @@ export const RentalBookingSchema = mongoose.Schema(
     {
         // Basic Info
         // Unique identifier for the rental booking
-        // bookingId: {
-        //     type: String,
-        //     required: true,
-        //     unique: true,
-        //     trim: true
-        // }, //not needed here because it will auto generate by mongoose
+        bookingId: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true
+        },
         // Current status of the rental booking
         bookingStatus: {
             type: String,

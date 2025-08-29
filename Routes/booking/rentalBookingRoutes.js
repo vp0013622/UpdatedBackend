@@ -11,7 +11,8 @@ import {
     UpdateMonthStatus, 
     GetPendingRents, 
     GetOverdueRents,
-    GetMyRentalBookings
+    GetMyRentalBookings,
+    ConfirmRentalBooking
 } from '../../Controllers/booking/RentalBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -33,6 +34,9 @@ RentalBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive"
 
 // Update rental booking details (property, dates, rent amounts, etc.)
 RentalBookingRouter.put('/update/:id', RoleAuthMiddleware("admin", "sales", "executive"), UpdateRentalBooking)
+
+// Confirm a rental booking (change status to ACTIVE)
+RentalBookingRouter.put('/confirm/:id', RoleAuthMiddleware("admin", "sales", "executive"), ConfirmRentalBooking)
 
 // Soft delete a rental booking (sets published to false)
 RentalBookingRouter.delete('/delete/:id', RoleAuthMiddleware("admin"), DeleteRentalBooking)

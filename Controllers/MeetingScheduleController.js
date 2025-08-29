@@ -273,6 +273,34 @@ const GetMeetingScheduleById = async (req, res) => {
     }
 }
 
+const GetMeetingById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const meeting = await MeetingScheduleModel.findById(id)
+            .populate('status', 'name statusCode description')
+            .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
+            .populate('customerId', 'firstName lastName email phoneNumber')
+            .populate('propertyId', 'name price propertyAddress description');
+
+        if (!meeting) {
+            return res.status(404).json({
+                message: 'Meeting not found',
+                data: null
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Meeting found',
+            data: meeting
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 const Edit = async (req, res) => {
     try {
         const { 
@@ -402,6 +430,7 @@ export {
     GetMyMeetings,
     GetAllNotPublishedMeetingSchedules,
     GetMeetingScheduleById,
+    GetMeetingById,
     Edit,
     DeleteById
 } 

@@ -603,6 +603,62 @@ const GetOverdueInstallments = async (req, res) => {
 };
 
 /**
+ * Confirm a purchase booking (change status from PENDING to CONFIRMED)
+ * This is typically done after initial verification and approval
+ */
+const ConfirmPurchaseBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
+        if (!purchaseBooking) {
+            return res.status(404).json({
+                message: 'Purchase booking not found',
+                data: null
+            });
+        }
+
+        if (purchaseBooking.bookingStatus === 'CONFIRMED') {
+            return res.status(400).json({
+                message: 'Purchase booking is already confirmed',
+                data: purchaseBooking
+            });
+        }
+
+        if (purchaseBooking.bookingStatus === 'CANCELLED') {
+            return res.status(400).json({
+                message: 'Cannot confirm a cancelled booking',
+                data: purchaseBooking
+            });
+        }
+
+        // Update status to CONFIRMED
+        purchaseBooking.bookingStatus = 'CONFIRMED';
+        purchaseBooking.updatedByUserId = req.user.id;
+        purchaseBooking.updatedAt = new Date();
+        
+        await purchaseBooking.save();
+
+        // Populate the updated booking
+        const updatedBooking = await PurchaseBookingModel.findById(purchaseBooking._id)
+            .populate('propertyId')
+            .populate('customerId')
+            .populate('assignedSalespersonId');
+
+        return res.status(200).json({
+            message: 'Purchase booking confirmed successfully',
+            data: updatedBooking
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
  * Get user's own purchase bookings (where user is the customer)
  * Returns clean purchase booking data without populates
  */
@@ -651,5 +707,6 @@ export {
     UpdateInstallmentStatus,
     GetPendingInstallments,
     GetOverdueInstallments,
-    GetMyPurchaseBookings
+    GetMyPurchaseBookings,
+    ConfirmPurchaseBooking
 }; 
