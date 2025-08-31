@@ -12,16 +12,26 @@ import {
     GetPendingRents, 
     GetOverdueRents,
     GetMyRentalBookings,
-    ConfirmRentalBooking
+    ConfirmRentalBooking,
+    AddDocumentsToRentalBooking,
+    DeleteDocumentFromRentalBooking,
+    UpdateDocumentInRentalBooking,
+    GetDocumentFromRentalBooking
 } from '../../Controllers/booking/RentalBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
+import { UploadBookingDocument } from '../../Middlewares/FileUploadMiddelware.js'
 
 const RentalBookingRouter = express.Router()
 
 // Rental Booking Management
 // Create a new rental booking with property, customer, and payment details
-RentalBookingRouter.post('/create', RoleAuthMiddleware("admin", "sales", "executive"), Create)
+// Supports document uploads during creation (up to 10 files)
+RentalBookingRouter.post('/create', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.array('documents', 10), // Allow up to 10 documents
+    Create
+)
 
 // Get all rental bookings with populated property, customer, and salesperson details
 RentalBookingRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executive"), GetAllRentalBookings)
@@ -37,6 +47,33 @@ RentalBookingRouter.put('/update/:id', RoleAuthMiddleware("admin", "sales", "exe
 
 // Confirm a rental booking (change status to ACTIVE)
 RentalBookingRouter.put('/confirm/:id', RoleAuthMiddleware("admin", "sales", "executive"), ConfirmRentalBooking)
+
+// Document Management
+// Add documents to an existing rental booking (supports multiple files)
+RentalBookingRouter.post('/:id/add-documents', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.array('documents', 10), // Allow up to 10 documents
+    AddDocumentsToRentalBooking
+)
+
+// Delete a specific document from a rental booking
+RentalBookingRouter.delete('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    DeleteDocumentFromRentalBooking
+)
+
+// Update/Replace a specific document in a rental booking
+RentalBookingRouter.put('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.single('document'), // Single file for update
+    UpdateDocumentInRentalBooking
+)
+
+// Get details of a specific document in a rental booking
+RentalBookingRouter.get('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    GetDocumentFromRentalBooking
+)
 
 // Soft delete a rental booking (sets published to false)
 RentalBookingRouter.delete('/delete/:id', RoleAuthMiddleware("admin"), DeleteRentalBooking)

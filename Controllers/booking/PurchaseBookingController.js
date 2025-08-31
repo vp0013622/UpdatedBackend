@@ -2,15 +2,18 @@ import { PurchaseBookingModel } from "../../Models/booking/PurchaseBookingModel.
 import { PaymentHistoryModel } from "../../Models/booking/PaymentHistoryModel.js";
 import { PropertyModel } from "../../Models/PropertyModel.js";
 import { UsersModel } from "../../Models/UsersModel.js";
+import { ImageUploadService } from "../../Services/ImageUploadService.js";
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Generate unique booking ID for purchase bookings
  * Creates a unique identifier with timestamp and random number
  */
+//create the guid
+
 const generateBookingId = () => {
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000);
-    return `PURCHASE-${new Date().getFullYear()}-${timestamp}-${random}`;
+    const date = new Date().toISOString().split('T')[0]; //how will 
+    return `PURC${date}-${uuidv4()}`; //generate the guid like PURC20250829-1234567890
 };
 
 /**
@@ -125,6 +128,7 @@ const Create = async (req, res) => {
             paymentTerms,
             installmentCount: installmentCount || 0,
             installmentSchedule,
+            documents: [], // Initialize empty documents array
             isActive: true,
             createdByUserId: req.user.id,
             updatedByUserId: req.user.id,
@@ -132,6 +136,43 @@ const Create = async (req, res) => {
         };
 
         const purchaseBooking = await PurchaseBookingModel.create(newPurchaseBooking);
+
+        // Handle document uploads if files are provided
+        if (req.files && req.files.length > 0) {
+            const uploadedDocuments = [];
+            
+            for (const file of req.files) {
+                try {
+                    // Upload document to Cloudinary
+                    const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                        file.buffer,
+                        file.originalname,
+                        bookingId
+                    );
+
+                    if (uploadResult.success) {
+                        uploadedDocuments.push({
+                            originalName: file.originalname,
+                            cloudinaryId: uploadResult.data.cloudinaryId,
+                            documentUrl: uploadResult.data.documentUrl,
+                            documentType: req.body.documentType || "OTHER",
+                            fileSize: uploadResult.data.size,
+                            mimeType: uploadResult.data.mimeType,
+                            uploadedByUserId: req.user.id
+                        });
+                    }
+                } catch (uploadError) {
+                    console.error('Document upload error:', uploadError);
+                    // Continue with other files even if one fails
+                }
+            }
+
+            // Update booking with uploaded documents
+            if (uploadedDocuments.length > 0) {
+                purchaseBooking.documents = uploadedDocuments;
+                await purchaseBooking.save();
+            }
+        }
 
         return res.status(201).json({
             message: 'Purchase booking created successfully',
@@ -695,6 +736,282 @@ const GetMyPurchaseBookings = async (req, res) => {
     }
 };
 
+/**
+ * Add documents to an existing purchase booking
+ * Uploads documents to Cloudinary and adds them to the booking
+ */
+const AddDocumentsToPurchaseBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { documentType } = req.body;
+
+        // Find the purchase booking
+        const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
+        if (!purchaseBooking) {
+            return res.status(404).json({
+                message: 'Purchase booking not found',
+                data: null
+            });
+        }
+
+        // Check if files are provided
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                message: 'No files provided for upload',
+                data: null
+            });
+        }
+
+        const uploadedDocuments = [];
+        
+        for (const file of req.files) {
+            try {
+                // Upload document to Cloudinary
+                const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                    file.buffer,
+                    file.originalname,
+                    purchaseBooking.bookingId
+                );
+
+                if (uploadResult.success) {
+                    uploadedDocuments.push({
+                        originalName: file.originalname,
+                        cloudinaryId: uploadResult.data.cloudinaryId,
+                        documentUrl: uploadResult.data.documentUrl,
+                        documentType: documentType || "OTHER",
+                        fileSize: uploadResult.data.size,
+                        mimeType: uploadResult.data.mimeType,
+                        uploadedByUserId: req.user.id
+                    });
+                }
+            } catch (uploadError) {
+                console.error('Document upload error:', uploadError);
+                // Continue with other files even if one fails
+            }
+        }
+
+        // Add new documents to existing documents array
+        if (uploadedDocuments.length > 0) {
+            purchaseBooking.documents.push(...uploadedDocuments);
+            purchaseBooking.updatedByUserId = req.user.id;
+            await purchaseBooking.save();
+        }
+
+        // Populate the updated booking
+        const updatedBooking = await PurchaseBookingModel.findById(purchaseBooking._id)
+            .populate('propertyId')
+            .populate('customerId')
+            .populate('assignedSalespersonId');
+
+        return res.status(200).json({
+            message: 'Documents added to purchase booking successfully',
+            count: uploadedDocuments.length,
+            data: updatedBooking
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Delete a specific document from a purchase booking
+ * Removes document from Cloudinary and updates the booking
+ */
+const DeleteDocumentFromPurchaseBooking = async (req, res) => {
+    try {
+        const { id, documentId } = req.params;
+
+        // Find the purchase booking
+        const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
+        if (!purchaseBooking) {
+            return res.status(404).json({
+                message: 'Purchase booking not found',
+                data: null
+            });
+        }
+
+        // Find the document to delete
+        const documentIndex = purchaseBooking.documents.findIndex(
+            doc => doc._id.toString() === documentId
+        );
+
+        if (documentIndex === -1) {
+            return res.status(404).json({
+                message: 'Document not found in this booking',
+                data: null
+            });
+        }
+
+        const documentToDelete = purchaseBooking.documents[documentIndex];
+
+        try {
+            // Delete document from Cloudinary
+            await ImageUploadService.deleteImage(documentToDelete.cloudinaryId);
+        } catch (deleteError) {
+            console.error('Cloudinary delete error:', deleteError);
+            // Continue with database removal even if Cloudinary deletion fails
+        }
+
+        // Remove document from the array
+        purchaseBooking.documents.splice(documentIndex, 1);
+        purchaseBooking.updatedByUserId = req.user.id;
+        await purchaseBooking.save();
+
+        return res.status(200).json({
+            message: 'Document deleted successfully from purchase booking',
+            data: purchaseBooking
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Update/Replace a specific document in a purchase booking
+ * Uploads new document to Cloudinary and updates the existing document record
+ */
+const UpdateDocumentInPurchaseBooking = async (req, res) => {
+    try {
+        const { id, documentId } = req.params;
+        const { documentType } = req.body;
+
+        // Find the purchase booking
+        const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
+        if (!purchaseBooking) {
+            return res.status(404).json({
+                message: 'Purchase booking not found',
+                data: null
+            });
+        }
+
+        // Find the document to update
+        const documentIndex = purchaseBooking.documents.findIndex(
+            doc => doc._id.toString() === documentId
+        );
+
+        if (documentIndex === -1) {
+            return res.status(404).json({
+                message: 'Document not found in this booking',
+                data: null
+            });
+        }
+
+        // Check if new file is provided
+        if (!req.file) {
+            return res.status(400).json({
+                message: 'No new file provided for update',
+                data: null
+            });
+        }
+
+        const documentToUpdate = purchaseBooking.documents[documentIndex];
+
+        try {
+            // Delete old document from Cloudinary
+            await ImageUploadService.deleteImage(documentToUpdate.cloudinaryId);
+        } catch (deleteError) {
+            console.error('Cloudinary delete error for old document:', deleteError);
+            // Continue with new upload even if old deletion fails
+        }
+
+        // Upload new document to Cloudinary
+        const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+            req.file.buffer,
+            req.file.originalname,
+            purchaseBooking.bookingId
+        );
+
+        if (!uploadResult.success) {
+            return res.status(500).json({
+                message: 'Failed to upload new document',
+                error: uploadResult.error
+            });
+        }
+
+        // Update the document record
+        purchaseBooking.documents[documentIndex] = {
+            originalName: req.file.originalname,
+            cloudinaryId: uploadResult.data.cloudinaryId,
+            documentUrl: uploadResult.data.documentUrl,
+            documentType: documentType || documentToUpdate.documentType, // Keep existing type if not provided
+            fileSize: uploadResult.data.size,
+            mimeType: uploadResult.data.mimeType,
+            uploadedAt: new Date(), // Update upload timestamp
+            uploadedByUserId: req.user.id
+        };
+
+        purchaseBooking.updatedByUserId = req.user.id;
+        await purchaseBooking.save();
+
+        // Populate the updated booking
+        const updatedBooking = await PurchaseBookingModel.findById(purchaseBooking._id)
+            .populate('propertyId')
+            .populate('customerId')
+            .populate('assignedSalespersonId');
+
+        return res.status(200).json({
+            message: 'Document updated successfully in purchase booking',
+            data: updatedBooking
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Get details of a specific document in a purchase booking
+ * Returns document metadata for editing purposes
+ */
+const GetDocumentFromPurchaseBooking = async (req, res) => {
+    try {
+        const { id, documentId } = req.params;
+
+        // Find the purchase booking
+        const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
+        if (!purchaseBooking) {
+            return res.status(404).json({
+                message: 'Purchase booking not found',
+                data: null
+            });
+        }
+
+        // Find the specific document
+        const document = purchaseBooking.documents.find(
+            doc => doc._id.toString() === documentId
+        );
+
+        if (!document) {
+            return res.status(404).json({
+                message: 'Document not found in this booking',
+                data: null
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Document details retrieved successfully',
+            data: document
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 export {
     Create,
     GetAllPurchaseBookings,
@@ -708,5 +1025,9 @@ export {
     GetPendingInstallments,
     GetOverdueInstallments,
     GetMyPurchaseBookings,
-    ConfirmPurchaseBooking
+    ConfirmPurchaseBooking,
+    AddDocumentsToPurchaseBooking,
+    DeleteDocumentFromPurchaseBooking,
+    UpdateDocumentInPurchaseBooking,
+    GetDocumentFromPurchaseBooking
 }; 

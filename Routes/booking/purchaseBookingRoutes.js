@@ -12,16 +12,26 @@ import {
     GetPendingInstallments, 
     GetOverdueInstallments,
     GetMyPurchaseBookings,
-    ConfirmPurchaseBooking
+    ConfirmPurchaseBooking,
+    AddDocumentsToPurchaseBooking,
+    DeleteDocumentFromPurchaseBooking,
+    UpdateDocumentInPurchaseBooking,
+    GetDocumentFromPurchaseBooking
 } from '../../Controllers/booking/PurchaseBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
+import { UploadBookingDocument } from '../../Middlewares/FileUploadMiddelware.js'
 
 const PurchaseBookingRouter = express.Router()
 
 // Purchase Booking Management
 // Create a new purchase booking with property, customer, and payment terms
-PurchaseBookingRouter.post('/create', RoleAuthMiddleware("admin", "sales", "executive"), Create)
+// Supports document uploads during creation (up to 10 files)
+PurchaseBookingRouter.post('/create', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.array('documents', 10), // Allow up to 10 documents
+    Create
+)
 
 // Get all purchase bookings with populated property, customer, and salesperson details
 PurchaseBookingRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executive"), GetAllPurchaseBookings)
@@ -37,6 +47,33 @@ PurchaseBookingRouter.put('/update/:id', RoleAuthMiddleware("admin", "sales", "e
 
 // Confirm a purchase booking (change status to CONFIRMED)
 PurchaseBookingRouter.put('/confirm/:id', RoleAuthMiddleware("admin", "sales", "executive"), ConfirmPurchaseBooking)
+
+// Document Management
+// Add documents to an existing purchase booking (supports multiple files)
+PurchaseBookingRouter.post('/:id/add-documents', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.array('documents', 10), // Allow up to 10 documents
+    AddDocumentsToPurchaseBooking
+)
+
+// Delete a specific document from a purchase booking
+PurchaseBookingRouter.delete('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    DeleteDocumentFromPurchaseBooking
+)
+
+// Update/Replace a specific document in a purchase booking
+PurchaseBookingRouter.put('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    UploadBookingDocument.single('document'), // Single file for update
+    UpdateDocumentInPurchaseBooking
+)
+
+// Get details of a specific document in a purchase booking
+PurchaseBookingRouter.get('/:id/documents/:documentId', 
+    RoleAuthMiddleware("admin", "sales", "executive"), 
+    GetDocumentFromPurchaseBooking
+)
 
 // Soft delete a purchase booking (sets published to false)
 PurchaseBookingRouter.delete('/delete/:id', RoleAuthMiddleware("admin"), DeletePurchaseBooking)

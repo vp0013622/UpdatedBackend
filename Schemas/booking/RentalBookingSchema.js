@@ -177,6 +177,56 @@ export const RentalBookingSchema = mongoose.Schema(
             default: null
         },
         
+        // Documents
+        // Array of rental booking documents (agreements, contracts, etc.)
+        documents: [{
+            // Original filename
+            originalName: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Cloudinary public ID for the document
+            cloudinaryId: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Document URL
+            documentUrl: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Document type/category
+            documentType: {
+                type: String,
+                enum: ["RENTAL_AGREEMENT", "CONTRACT", "ID_PROOF", "ADDRESS_PROOF", "INCOME_PROOF", "BANK_STATEMENT", "OTHER"],
+                default: "OTHER"
+            },
+            // File size in bytes
+            fileSize: {
+                type: Number,
+                required: true
+            },
+            // MIME type of the document
+            mimeType: {
+                type: String,
+                required: true
+            },
+            // Upload timestamp
+            uploadedAt: {
+                type: Date,
+                default: Date.now
+            },
+            // User who uploaded the document
+            uploadedByUserId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "UsersModel",
+                required: true
+            }
+        }],
+        
         // Audit Fields
         // User who created this booking
         createdByUserId: {

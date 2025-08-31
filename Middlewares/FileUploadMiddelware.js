@@ -70,4 +70,26 @@ const UploadDocument = multer({
   },
 });
 
-export { UploadProfilePicture, UploadPropertyImage, UploadDocument };
+// Booking Document Storage - Use memory storage for Cloudinary upload
+const bookingDocumentStorage = multer.memoryStorage();
+
+// Booking Document Filter - Allow documents and images
+const BookingDocumentFilter = (req, file, cb) => {
+  const allowedTypes = /pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document|vnd.ms-excel|vnd.openxmlformats-officedocument.spreadsheetml.sheet|plain|jpeg|png|jpg|gif|svg|webp/;
+  const isMimeTypeAllowed = allowedTypes.test(file.mimetype);
+  if (isMimeTypeAllowed) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF, Word, Excel, text files, or images are allowed for booking documents'), false);
+  }
+};
+
+const UploadBookingDocument = multer({
+  storage: bookingDocumentStorage,
+  fileFilter: BookingDocumentFilter,
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15MB for booking documents
+  },
+});
+
+export { UploadProfilePicture, UploadPropertyImage, UploadDocument, UploadBookingDocument };

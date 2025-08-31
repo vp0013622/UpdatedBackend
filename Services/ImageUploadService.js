@@ -242,4 +242,108 @@ export class ImageUploadService {
             };
         }
     }
+
+    /**
+     * Upload purchase booking document to Cloudinary
+     * @param {Buffer} documentBuffer - The document buffer
+     * @param {string} originalName - Original filename
+     * @param {string} bookingId - Purchase booking ID for folder organization
+     * @returns {Promise<Object>} Upload response with document URLs
+     */
+    static async uploadPurchaseBookingDocument(documentBuffer, originalName, bookingId) {
+        try {
+            // Convert buffer to base64
+            const base64Document = `data:${this.getMimeType(originalName)};base64,${documentBuffer.toString('base64')}`;
+            
+            // Upload to Cloudinary with organized folder structure
+            const uploadResult = await cloudinary.uploader.upload(base64Document, {
+                folder: `insightwaveit/purchase_booking_docs/${bookingId}`,
+                public_id: this.generatePublicId(originalName),
+                resource_type: 'auto', // Auto-detect resource type
+                transformation: [
+                    { quality: 'auto', fetch_format: 'auto' }
+                ]
+            });
+
+            // Generate URLs
+            const originalUrl = cloudinary.url(uploadResult.public_id, {
+                secure: true,
+                resource_type: uploadResult.resource_type
+            });
+
+            return {
+                success: true,
+                data: {
+                    originalUrl: originalUrl,
+                    documentUrl: originalUrl, // For consistency with schema
+                    imageId: uploadResult.public_id,
+                    filename: uploadResult.original_filename,
+                    size: uploadResult.bytes,
+                    width: uploadResult.width || null,
+                    height: uploadResult.height || null,
+                    mimeType: uploadResult.format,
+                    cloudinaryId: uploadResult.public_id,
+                    secureUrl: uploadResult.secure_url
+                }
+            };
+        } catch (error) {
+            console.error('Cloudinary purchase booking document upload error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Upload rental booking document to Cloudinary
+     * @param {Buffer} documentBuffer - The document buffer
+     * @param {string} originalName - Original filename
+     * @param {string} bookingId - Rental booking ID for folder organization
+     * @returns {Promise<Object>} Upload response with document URLs
+     */
+    static async uploadRentalBookingDocument(documentBuffer, originalName, bookingId) {
+        try {
+            // Convert buffer to base64
+            const base64Document = `data:${this.getMimeType(originalName)};base64,${documentBuffer.toString('base64')}`;
+            
+            // Upload to Cloudinary with organized folder structure
+            const uploadResult = await cloudinary.uploader.upload(base64Document, {
+                folder: `insightwaveit/rental_booking_docs/${bookingId}`,
+                public_id: this.generatePublicId(originalName),
+                resource_type: 'auto', // Auto-detect resource type
+                transformation: [
+                    { quality: 'auto', fetch_format: 'auto' }
+                ]
+            });
+
+            // Generate URLs
+            const originalUrl = cloudinary.url(uploadResult.public_id, {
+                secure: true,
+                resource_type: uploadResult.resource_type
+            });
+
+            return {
+                success: true,
+                data: {
+                    originalUrl: originalUrl,
+                    documentUrl: originalUrl, // For consistency with schema
+                    imageId: uploadResult.public_id,
+                    filename: uploadResult.original_filename,
+                    size: uploadResult.bytes,
+                    width: uploadResult.width || null,
+                    height: uploadResult.height || null,
+                    mimeType: uploadResult.format,
+                    cloudinaryId: uploadResult.public_id,
+                    secureUrl: uploadResult.secure_url
+                }
+            };
+        } catch (error) {
+            console.error('Cloudinary rental booking document upload error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 } 

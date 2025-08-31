@@ -173,6 +173,56 @@ export const PurchaseBookingSchema = mongoose.Schema(
             default: null
         },
         
+        // Documents
+        // Array of booking documents (contracts, agreements, etc.)
+        documents: [{
+            // Original filename
+            originalName: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Cloudinary public ID for the document
+            cloudinaryId: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Document URL
+            documentUrl: {
+                type: String,
+                required: true,
+                trim: true
+            },
+            // Document type/category
+            documentType: {
+                type: String,
+                enum: ["CONTRACT", "AGREEMENT", "ID_PROOF", "ADDRESS_PROOF", "INCOME_PROOF", "BANK_STATEMENT", "OTHER"],
+                default: "OTHER"
+            },
+            // File size in bytes
+            fileSize: {
+                type: Number,
+                required: true
+            },
+            // MIME type of the document
+            mimeType: {
+                type: String,
+                required: true
+            },
+            // Upload timestamp
+            uploadedAt: {
+                type: Date,
+                default: Date.now
+            },
+            // User who uploaded the document
+            uploadedByUserId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "UsersModel",
+                required: true
+            }
+        }],
+        
         // Audit Fields
         // User who created this booking
         createdByUserId: {
