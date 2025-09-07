@@ -55,10 +55,34 @@ const GetAllProperty = async (req, res) => {
     try {
         const properties = await PropertyModel.find({ published: true })
             .sort({ createdAt: -1 })
+            .populate('propertyTypeId')
+            .populate('owner')
+            .lean()
+
+        // Get images for each property
+        const propertiesWithImages = await Promise.all(
+            properties.map(async (property) => {
+                const images = await PropertyImagesModel.find({ 
+                    propertyId: property._id, 
+                    published: true 
+                }).select('originalUrl thumbnailUrl mediumUrl displayUrl fileName')
+                
+                return {
+                    ...property,
+                    images: images.map(img => img.originalUrl || img.displayUrl || img.mediumUrl || img.thumbnailUrl),
+                    image: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    imageUrl: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    thumbnail: images.length > 0 ? (images[0].thumbnailUrl || images[0].mediumUrl || images[0].displayUrl || images[0].originalUrl) : null,
+                    mainImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    featuredImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null
+                }
+            })
+        )
+
         return res.status(200).json({
             message: 'all properties',
-            count: properties.length,
-            data: properties
+            count: propertiesWithImages.length,
+            data: propertiesWithImages
         })
     }
     catch (error) {
@@ -121,11 +145,34 @@ const GetAllPropertyWithParams = async (req, res) => {
 
         const properties = await PropertyModel.find(filter)
             .sort({ createdAt: -1 })
+            .populate('propertyTypeId')
+            .populate('owner')
+            .lean()
+
+        // Get images for each property
+        const propertiesWithImages = await Promise.all(
+            properties.map(async (property) => {
+                const images = await PropertyImagesModel.find({ 
+                    propertyId: property._id, 
+                    published: true 
+                }).select('originalUrl thumbnailUrl mediumUrl displayUrl fileName')
+                
+                return {
+                    ...property,
+                    images: images.map(img => img.originalUrl || img.displayUrl || img.mediumUrl || img.thumbnailUrl),
+                    image: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    imageUrl: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    thumbnail: images.length > 0 ? (images[0].thumbnailUrl || images[0].mediumUrl || images[0].displayUrl || images[0].originalUrl) : null,
+                    mainImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    featuredImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null
+                }
+            })
+        )
 
         return res.status(200).json({
             message: 'all properties',
-            count: properties.length,
-            data: properties
+            count: propertiesWithImages.length,
+            data: propertiesWithImages
         })
     }
     catch (error) {
@@ -140,15 +187,36 @@ const GetPropertyById = async (req, res) => {
     try {
         var { id } = req.params
         const property = await PropertyModel.findById(id)
+            .populate('propertyTypeId')
+            .populate('owner')
+            .lean()
+        
         if (property == null) {
             return res.status(404).json({
                 message: 'property not found',
                 data: property
             })
         }
+
+        // Get images for the property
+        const images = await PropertyImagesModel.find({ 
+            propertyId: property._id, 
+            published: true 
+        }).select('originalUrl thumbnailUrl mediumUrl displayUrl fileName')
+        
+        const propertyWithImages = {
+            ...property,
+            images: images.map(img => img.originalUrl || img.displayUrl || img.mediumUrl || img.thumbnailUrl),
+            image: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+            imageUrl: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+            thumbnail: images.length > 0 ? (images[0].thumbnailUrl || images[0].mediumUrl || images[0].displayUrl || images[0].originalUrl) : null,
+            mainImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+            featuredImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null
+        }
+
         return res.status(200).json({
             message: 'property found',
-            data: property
+            data: propertyWithImages
         })
     }
     catch (error) {
