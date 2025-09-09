@@ -23,6 +23,7 @@ const AuthMiddelware = async(req, res, next)=>{
             var decodedToken = jwt.verify(token, process.env.JWT_SECRET)
             var user = decodedToken //we put user in req param so we can use it further middelwares
             const userRoleDoc = await RolesModel.findOne({"name": user.role})
+            //const userRoleDoc = await RolesModel.findOne({"name": { $regex: new RegExp(`^${user.role}$`, 'i') }})
             if (!userRoleDoc) {
                 return res.status(401).json({ message: "Access denied: role not found" });
             }

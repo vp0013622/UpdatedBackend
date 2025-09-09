@@ -438,7 +438,7 @@ export class DashboardController {
             const recentProperties = await PropertyModel.find({ published: true })
                 .sort({ createdAt: -1 })
                 .limit(10)
-                .populate('propertyType');
+                .populate('propertyTypeId');
 
             const recentLeads = await LeadsModel.find({ published: true })
                 .sort({ createdAt: -1 })
@@ -452,7 +452,7 @@ export class DashboardController {
                     type: 'property',
                     title: `Property ${prop.propertyStatus === 'SOLD' ? 'Sold' : 'Listed'}`,
                     subtitle: prop.name,
-                    description: `${prop.propertyType?.name || 'Property'} - ${prop.propertyStatus}`,
+                    description: `${prop.propertyTypeId?.name || 'Property'} - ${prop.propertyStatus}`,
                     time: prop.createdAt,
                     data: prop
                 });

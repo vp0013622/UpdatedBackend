@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 //create the guid
 
 const generateBookingId = () => {
-    const date = new Date().toISOString().split('T')[0]; //how will 
+    const date = new Date().toISOString().split('T')[0]; //how will look like PURC20250829
     return `PURC${date}-${uuidv4()}`; //generate the guid like PURC20250829-1234567890
 };
 
