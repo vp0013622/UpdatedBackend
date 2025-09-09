@@ -4,6 +4,8 @@ import { UsersModel } from '../Models/UsersModel.js';
 import { FollowUpStatusModel } from '../Models/FollowUpStatusModel.js';
 import { LeadStatusModel } from '../Models/LeadStatusModel.js';
 import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
+import { RentalBookingModel } from '../Models/booking/RentalBookingModel.js';
+import { PurchaseBookingModel } from '../Models/booking/PurchaseBookingModel.js';
 
 export class DashboardController {
     // Get overall dashboard statistics
@@ -28,6 +30,25 @@ export class DashboardController {
             // Get counts
             const totalLeads = await LeadsModel.countDocuments({ published: true });
             const totalUsers = await UsersModel.countDocuments({ published: true });
+            
+            // Get booking counts
+            const totalRentalBookings = await RentalBookingModel.countDocuments({ published: true });
+            const totalPurchaseBookings = await PurchaseBookingModel.countDocuments({ published: true });
+            
+            // Get role-wise customer counts
+            const users = await UsersModel.find({ published: true });
+            const roleWiseCustomers = {};
+            users.forEach(user => {
+                let role = 'unknown';
+                if (typeof user.role === 'string') {
+                    role = user.role;
+                } else if (user.role && typeof user.role === 'object') {
+                    role = user.role.name || user.role.role || 'unknown';
+                }
+                roleWiseCustomers[role] = (roleWiseCustomers[role] || 0) + 1;
+            });
+            
+            console.log('Role-wise customers from backend:', roleWiseCustomers);
             
             // Temporarily set these to 0 to avoid the ObjectId casting error
             const activeLeads = 0;
@@ -70,6 +91,9 @@ export class DashboardController {
                     totalSales,
                     totalLeads,
                     totalUsers,
+                    totalRentalBookings,
+                    totalPurchaseBookings,
+                    roleWiseCustomers,
                     activeLeads,
                     pendingFollowups,
                     averageRating,

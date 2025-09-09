@@ -84,6 +84,14 @@ const Create = async (req, res) => {
             });
         }
 
+        //check if the property is already sold
+        if (property.propertyStatus === "SOLD") {
+            return res.status(400).json({
+                message: 'Property is already sold',
+                data: null
+            });
+        }
+
         // Check if customer exists
         const customer = await UsersModel.findById(customerId);
         if (!customer) {
@@ -173,6 +181,13 @@ const Create = async (req, res) => {
                 await purchaseBooking.save();
             }
         }
+
+        //update the property status to sold
+        var propertyModel = await PropertyModel.findById(propertyId);
+        propertyModel.propertyStatus = "SOLD";
+        property.updatedByUserId = req.user.id;
+        property.updatedAt = new Date();
+        await propertyModel.save();
 
         return res.status(201).json({
             message: 'Purchase booking created successfully',

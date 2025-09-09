@@ -89,6 +89,14 @@ const Create = async (req, res) => {
             });
         }
 
+        //check if the property is already rented
+        if (property.propertyStatus === "RENTED") {
+            return res.status(400).json({
+                message: 'Property is already rented',
+                data: null
+            });
+        }
+
         // Check if customer exists
         const customer = await UsersModel.findById(customerId);
         if (!customer) {
@@ -173,6 +181,12 @@ const Create = async (req, res) => {
                 await rentalBooking.save();
             }
         }
+       //update the property status to rented
+       var propertyModel = await PropertyModel.findById(propertyId);
+       propertyModel.propertyStatus = "RENTED";
+       propertyModel.updatedByUserId = req.user.id;
+       propertyModel.updatedAt = new Date();
+       await propertyModel.save();
 
         return res.status(201).json({
             message: 'Rental booking created successfully',

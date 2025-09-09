@@ -228,6 +228,129 @@ const GetMyMeetings = async (req, res) => {
     }
 }
 
+const GetMyTodaysMeetings = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log('GetMyTodaysMeetings - User ID:', id);
+        
+        // Get today's date range
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        
+        console.log('Date range for today:', { startOfDay, endOfDay });
+        
+        // Find meetings where customerId matches the requested user ID and meeting date is today
+        const meetings = await MeetingScheduleModel.find({
+            published: true,
+            customerId: id,
+            meetingDate: {
+                $gte: startOfDay,
+                $lt: endOfDay
+            }
+        })
+        .populate('status', 'name statusCode description')
+        .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
+        .populate('propertyId', 'name price propertyAddress description')
+        .sort({ startTime: 1 });
+
+        console.log('Found meetings for today:', meetings.length, meetings);
+
+        // Debug: Check all meetings for this user
+        const allUserMeetings = await MeetingScheduleModel.find({
+            published: true,
+            customerId: id
+        }).populate('status', 'name statusCode description');
+        console.log('All meetings for user:', allUserMeetings.length, allUserMeetings);
+        
+        // Debug: Check meeting dates
+        allUserMeetings.forEach((meeting, index) => {
+            console.log(`Meeting ${index + 1}:`, {
+                id: meeting._id,
+                meetingDate: meeting.meetingDate,
+                startTime: meeting.startTime,
+                isToday: meeting.meetingDate >= startOfDay && meeting.meetingDate < endOfDay,
+                customerId: meeting.customerId
+            });
+        });
+
+        return res.status(200).json({
+            message: 'my today\'s meetings',
+            count: meetings.length,
+            data: meetings
+        })
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
+const GetMyTomorrowsMeetings = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        console.log('GetMyTomorrowsMeetings - User ID:', id);
+        
+        // Get tomorrow's date range
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const startOfDay = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+        const endOfDay = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate() + 1);
+        
+        console.log('Date range for tomorrow:', { startOfDay, endOfDay });
+        
+        // Find meetings where customerId matches the requested user ID and meeting date is tomorrow
+        const meetings = await MeetingScheduleModel.find({
+            published: true,
+            customerId: id,
+            meetingDate: {
+                $gte: startOfDay,
+                $lt: endOfDay
+            }
+        })
+        .populate('status', 'name statusCode description')
+        .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
+        .populate('propertyId', 'name price propertyAddress description')
+        .sort({ startTime: 1 });
+
+        console.log('Found meetings for tomorrow:', meetings.length, meetings);
+
+        // Debug: Check all meetings for this user
+        const allUserMeetings = await MeetingScheduleModel.find({
+            published: true,
+            customerId: id
+        }).populate('status', 'name statusCode description');
+        console.log('All meetings for user (tomorrow):', allUserMeetings.length, allUserMeetings);
+        
+        // Debug: Check meeting dates
+        allUserMeetings.forEach((meeting, index) => {
+            console.log(`Meeting ${index + 1} (tomorrow):`, {
+                id: meeting._id,
+                meetingDate: meeting.meetingDate,
+                startTime: meeting.startTime,
+                isTomorrow: meeting.meetingDate >= startOfDay && meeting.meetingDate < endOfDay,
+                customerId: meeting.customerId
+            });
+        });
+
+        return res.status(200).json({
+            message: 'my tomorrow\'s meetings',
+            count: meetings.length,
+            data: meetings
+        })
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
 const GetAllNotPublishedMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: false })
@@ -428,6 +551,8 @@ export {
     Create,
     GetAllMeetingSchedules,
     GetMyMeetings,
+    GetMyTodaysMeetings,
+    GetMyTomorrowsMeetings,
     GetAllNotPublishedMeetingSchedules,
     GetMeetingScheduleById,
     GetMeetingById,
