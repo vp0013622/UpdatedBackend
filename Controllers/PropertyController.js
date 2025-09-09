@@ -517,7 +517,282 @@ const DeleteAllPropertyImageById = async (req, res) =>{
     }
 }
 
+// Duplicate controller for property image upload with overwrite capability
+const CreatePropertyImageByPropertyIdV2 = async (req, res) =>{
+    try {
+        const propertyId = req.params.id; // Get property ID from URL parameter
+        const file = req.file;
+    
+        // Validation
+        if (!propertyId || !file) {
+          return res.status(400).json({
+            message: 'Validation failed: Property ID and image file are required',
+            data: {
+              missingFields: {
+                propertyId: !propertyId ? 'Property ID is required' : null,
+                file: !file ? 'Property image file is required' : null
+              }
+            }
+          });
+        }
+
+        // Check for existing images with the same filename and delete them
+        const existingImages = await PropertyImagesModel.find({ 
+            propertyId,
+            fileName: file.originalname
+        });
+
+        // If duplicate images exist, delete them to allow overwriting
+        if (existingImages.length > 0) {
+            console.log(`Found ${existingImages.length} existing image(s) with filename "${file.originalname}". Deleting to allow overwrite.`);
+            
+            // Delete existing images from database
+            await PropertyImagesModel.deleteMany({ 
+                propertyId,
+                fileName: file.originalname
+            });
+            
+            // Note: We don't delete from Cloudinary here as the new upload will overwrite
+            // Cloudinary automatically handles file overwriting when using the same public_id
+        }
+
+        // Upload image to Cloudinary with property-specific public_id for overwriting
+        const uploadResult = await ImageUploadService.uploadPropertyImage(file.buffer, file.originalname, propertyId);
+        
+        if (!uploadResult.success) {
+            return res.status(500).json({
+                message: 'Property image upload failed: Unable to process image file',
+                error: uploadResult.error,
+                data: {
+                  fileName: file.originalname,
+                  fileSize: file.size
+                }
+            });
+        }
+    
+        // Save new record with image URLs
+        const newFile = {
+          propertyId,
+          fileName: file.originalname,
+          originalUrl: uploadResult.data.originalUrl,
+          thumbnailUrl: uploadResult.data.thumbnailUrl,
+          mediumUrl: uploadResult.data.mediumUrl,
+          displayUrl: uploadResult.data.displayUrl,
+          imageId: uploadResult.data.imageId,
+          cloudinaryId: uploadResult.data.cloudinaryId,
+          size: uploadResult.data.size,
+          width: uploadResult.data.width,
+          height: uploadResult.data.height,
+          mimeType: uploadResult.data.mimeType,
+          createdByUserId: req.user?.id,
+          updatedByUserId: req.user?.id,
+          published: true,
+        };
+    
+        const propertyImages = await PropertyImagesModel.create(newFile);
+    
+        return res.status(201).json({
+          message: 'Property image uploaded successfully and saved to database',
+          data: propertyImages
+        });
+    
+      } catch (error) {
+        return res.status(500).json({
+          message: 'Internal server error: Failed to create property image',
+          error: error.message,
+        });
+      }
+}
+
+// New function for home page properties with enhanced filters
+const GetHomeProperties = async (req, res) => {
+    try {
+        const { 
+            propertyType = 'Any', 
+            budget = 'Any', 
+            possession = 'Any', 
+            city = '', 
+            query = '', 
+            propertyStatus = 'Any',
+            limit = 20,
+            page = 1
+        } = req.query;
+
+        let filter = { published: true };
+
+        // Property Type Filter - We'll handle this after population
+        let propertyTypeFilter = null;
+        if (propertyType && propertyType !== 'Any') {
+            // Map frontend property types to backend property types
+            const propertyTypeMap = {
+                'NEW': 'NEW',
+                'FARM HOUSE RESORT PLOT': 'FARM HOUSE RESORT PLOT',
+                'PT': 'PT',
+                'COMMERCIAL': 'COMMERCIAL',
+                'LANDS': 'LANDS',
+                'APARTMENT': 'APARTMENT',
+                'HOUSE': 'HOUSE',
+                'VILLA': 'VILLA'
+            };
+            
+            propertyTypeFilter = propertyTypeMap[propertyType];
+        }
+
+        // Property Status Filter
+        if (propertyStatus && propertyStatus !== 'Any') {
+            const statusMap = {
+                'Buy': 'FOR SALE',
+                'Rental': 'FOR RENT',
+                'Sold': 'SOLD'
+            };
+            
+            const backendStatus = statusMap[propertyStatus] || propertyStatus;
+            filter.propertyStatus = backendStatus;
+            console.log('Filtering by property status:', backendStatus);
+        }
+
+        // City Filter
+        if (city && city.trim() !== '') {
+            filter['propertyAddress.city'] = { $regex: city, $options: 'i' };
+        }
+
+        // Search Query Filter
+        if (query && query.trim() !== '') {
+            filter.$or = [
+                { name: { $regex: query, $options: 'i' } },
+                { description: { $regex: query, $options: 'i' } },
+                { 'propertyAddress.street': { $regex: query, $options: 'i' } },
+                { 'propertyAddress.area': { $regex: query, $options: 'i' } },
+                { 'propertyAddress.city': { $regex: query, $options: 'i' } }
+            ];
+        }
+
+        // Possession Filter (based on listedDate)
+        if (possession && possession !== 'Any') {
+            const now = new Date();
+            const sixMonthsAgo = new Date(now.getTime() - (6 * 30 * 24 * 60 * 60 * 1000));
+            const oneYearAgo = new Date(now.getTime() - (365 * 24 * 60 * 60 * 1000));
+            
+            switch (possession) {
+                case 'Ready to Move':
+                    filter.listedDate = { $lte: now };
+                    break;
+                case 'Under Construction':
+                    filter.listedDate = { $gt: now };
+                    break;
+                case 'New Launch':
+                    filter.listedDate = { $gte: sixMonthsAgo };
+                    break;
+            }
+        }
+
+        // Calculate skip for pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        console.log('Final filter object:', JSON.stringify(filter, null, 2));
+
+        // Execute query with population and sorting
+        const properties = await PropertyModel.find(filter)
+            .sort({ createdAt: -1 })
+            .populate('propertyTypeId')
+            .populate('owner')
+            .lean();
+            
+        console.log('Total properties found:', properties.length);
+
+        // Apply property type filter after population
+        let filteredProperties = properties;
+        if (propertyTypeFilter) {
+            console.log('Filtering by property type:', propertyTypeFilter);
+            console.log('Total properties before filtering:', properties.length);
+            console.log('Sample property types:', properties.slice(0, 3).map(p => ({
+                name: p.name,
+                propertyTypeId: p.propertyTypeId,
+                typeName: p.propertyTypeId?.typeName
+            })));
+            
+            filteredProperties = properties.filter(property => {
+                if (typeof property.propertyTypeId === 'string') {
+                    // If propertyTypeId is a string, we need to find the type
+                    // This shouldn't happen after population, but just in case
+                    return false;
+                } else if (property.propertyTypeId && typeof property.propertyTypeId === 'object') {
+                    return property.propertyTypeId.typeName === propertyTypeFilter;
+                }
+                return false;
+            });
+            
+            console.log('Properties after property type filtering:', filteredProperties.length);
+        }
+
+        // Apply pagination after filtering
+        const paginatedProperties = filteredProperties.slice(skip, skip + parseInt(limit));
+
+        // Get images for each property
+        const propertiesWithImages = await Promise.all(
+            paginatedProperties.map(async (property) => {
+                const images = await PropertyImagesModel.find({ 
+                    propertyId: property._id, 
+                    published: true 
+                }).select('originalUrl thumbnailUrl mediumUrl displayUrl fileName')
+                
+                return {
+                    ...property,
+                    images: images.map(img => img.originalUrl || img.displayUrl || img.mediumUrl || img.thumbnailUrl),
+                    image: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    imageUrl: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    thumbnail: images.length > 0 ? (images[0].thumbnailUrl || images[0].mediumUrl || images[0].displayUrl || images[0].originalUrl) : null,
+                    mainImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null,
+                    featuredImage: images.length > 0 ? (images[0].originalUrl || images[0].displayUrl || images[0].mediumUrl || images[0].thumbnailUrl) : null
+                }
+            })
+        );
+
+        // Apply budget filter after fetching (since it's a range filter)
+        let finalFilteredProperties = propertiesWithImages;
+        if (budget && budget !== 'Any') {
+            finalFilteredProperties = propertiesWithImages.filter(property => {
+                const price = property.price;
+                switch (budget) {
+                    case 'Under 50L':
+                        return price < 5000000;
+                    case '50L - 1Cr':
+                        return price >= 5000000 && price <= 10000000;
+                    case '1Cr - 2Cr':
+                        return price > 10000000 && price <= 20000000;
+                    case '2Cr - 5Cr':
+                        return price > 20000000 && price <= 50000000;
+                    case '5Cr+':
+                        return price > 50000000;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        // Get total count for pagination (count all filtered properties, not just paginated ones)
+        const totalCount = filteredProperties.length;
+
+        return res.status(200).json({
+            message: 'Home properties retrieved successfully',
+            count: finalFilteredProperties.length,
+            totalCount: totalCount,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(totalCount / parseInt(limit)),
+            data: finalFilteredProperties
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+}
+
 export {
     Create, GetAllProperty, GetAllNotPublishedProperty, GetAllPropertyWithParams, GetPropertyById, Edit, DeleteById,
-    CreatePropertyImageByPropertyId, GetAllPropertyImagesByPropertyId, GetPropertyImageById, DeletePropertyImageById, DeleteAllPropertyImageById
+    CreatePropertyImageByPropertyId, GetAllPropertyImagesByPropertyId, GetPropertyImageById, DeletePropertyImageById, DeleteAllPropertyImageById,
+    CreatePropertyImageByPropertyIdV2, GetHomeProperties
 }
