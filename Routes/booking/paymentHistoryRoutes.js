@@ -13,7 +13,9 @@ import {
     ReconcilePayment,
     GetPaymentSummary,
     GetPaymentsByStatus,
-    GetUnreconciledPayments
+    GetUnreconciledPayments,
+    GetAssignedPaymentHistory,
+    GetMyPaymentHistory
 } from '../../Controllers/booking/PaymentHistoryController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -23,6 +25,12 @@ const PaymentHistoryRouter = express.Router()
 // Payment History Management
 // Get all payment history records with populated details
 PaymentHistoryRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executive"), GetAllPaymentHistory)
+
+// Get assigned payment history for executives (payments for bookings they assigned/initiated)
+PaymentHistoryRouter.get('/assigned', AuthMiddelware, RoleAuthMiddleware("admin", "sales", "executive"), GetAssignedPaymentHistory)
+
+// Get my payment history for clients (payments for their own bookings)
+PaymentHistoryRouter.get('/my', AuthMiddelware, GetMyPaymentHistory)
 
 // Get a specific payment record by ID with populated details
 PaymentHistoryRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive"), GetPaymentById)

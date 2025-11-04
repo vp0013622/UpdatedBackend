@@ -111,6 +111,51 @@ export class ImageUploadService {
     }
 
     /**
+     * Upload property brochure PDF to Cloudinary
+     * @param {Buffer} documentBuffer - The PDF buffer
+     * @param {string} originalName - Original filename
+     * @param {string} propertyId - Property ID for folder organization
+     * @returns {Promise<Object>} Upload response with document URL
+     */
+    static async uploadPropertyBrochure(documentBuffer, originalName, propertyId) {
+        try {
+            // Convert buffer to base64
+            const base64Document = `data:${this.getMimeType(originalName)};base64,${documentBuffer.toString('base64')}`;
+            
+            // Upload to Cloudinary with property-specific folder
+            const uploadResult = await cloudinary.uploader.upload(base64Document, {
+                folder: `insightwaveit/property-brochures/${propertyId}`,
+                public_id: this.generatePublicId(originalName),
+                resource_type: 'auto', // Auto-detect resource type (PDF)
+            });
+
+            // Generate secure URL
+            const brochureUrl = cloudinary.url(uploadResult.public_id, {
+                secure: true,
+                resource_type: uploadResult.resource_type
+            });
+
+            return {
+                success: true,
+                data: {
+                    brochureUrl: brochureUrl,
+                    secureUrl: uploadResult.secure_url,
+                    filename: uploadResult.original_filename,
+                    size: uploadResult.bytes,
+                    mimeType: uploadResult.format,
+                    cloudinaryId: uploadResult.public_id
+                }
+            };
+        } catch (error) {
+            console.error('Cloudinary property brochure upload error:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Delete image from Cloudinary
      * @param {string} publicId - Cloudinary public ID
      * @returns {Promise<Object>} Delete response

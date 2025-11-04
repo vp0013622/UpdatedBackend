@@ -194,3 +194,12 @@ export const PaymentHistorySchema = mongoose.Schema(
         timestamps: true
     }
 );
+
+// Virtual field for bookingId - automatically selects the correct booking based on bookingType
+PaymentHistorySchema.virtual('bookingId').get(function() {
+    return this.bookingType === 'RENTAL' ? this.rentalBookingId : this.purchaseBookingId;
+});
+
+// Ensure virtual fields are included in JSON
+PaymentHistorySchema.set('toJSON', { virtuals: true });
+PaymentHistorySchema.set('toObject', { virtuals: true });

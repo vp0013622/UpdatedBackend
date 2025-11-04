@@ -255,7 +255,8 @@ const Edit = async (req, res) => {
             listedDate: property.listedDate,
             createdByUserId: property.createdByUserId,
             updatedByUserId: req.user.id,
-            published: published !== undefined ? published : property.published
+            published: published !== undefined ? published : property.published,
+            brochureUrl: req.body.brochureUrl !== undefined ? req.body.brochureUrl : property.brochureUrl
         }
         
         const result = await PropertyModel.findByIdAndUpdate(id, newProperty)
@@ -791,8 +792,83 @@ const GetHomeProperties = async (req, res) => {
     }
 }
 
+// Upload property brochure PDF
+const UploadPropertyBrochure = async (req, res) => {
+    try {
+        const propertyId = req.params.id;
+        const file = req.file;
+
+        // Validation
+        if (!propertyId || !file) {
+            return res.status(400).json({
+                message: 'Validation failed: Property ID and brochure file are required',
+                data: {
+                    missingFields: {
+                        propertyId: !propertyId ? 'Property ID is required' : null,
+                        file: !file ? 'Brochure PDF file is required' : null
+                    }
+                }
+            });
+        }
+
+        // Validate file type (PDF only)
+        if (file.mimetype !== 'application/pdf') {
+            return res.status(400).json({
+                message: 'Validation failed: Only PDF files are allowed for brochures',
+                data: {
+                    receivedType: file.mimetype,
+                    allowedType: 'application/pdf'
+                }
+            });
+        }
+
+        // Check if property exists
+        const property = await PropertyModel.findById(propertyId);
+        if (!property) {
+            return res.status(404).json({
+                message: 'Property not found'
+            });
+        }
+
+        // Upload brochure to Cloudinary
+        const uploadResult = await ImageUploadService.uploadPropertyBrochure(file.buffer, file.originalname, propertyId);
+        
+        if (!uploadResult.success) {
+            return res.status(500).json({
+                message: 'Brochure upload failed: Unable to process PDF file',
+                error: uploadResult.error,
+                data: {
+                    fileName: file.originalname,
+                    fileSize: file.size
+                }
+            });
+        }
+
+        // Update property with brochure URL
+        property.brochureUrl = uploadResult.data.brochureUrl;
+        property.updatedByUserId = req.user?.id;
+        await property.save();
+
+        return res.status(200).json({
+            message: 'Property brochure uploaded successfully',
+            data: {
+                brochureUrl: uploadResult.data.brochureUrl,
+                filename: uploadResult.data.filename,
+                size: uploadResult.data.size
+            }
+        });
+
+    } catch (error) {
+        console.error('Upload property brochure error:', error);
+        return res.status(500).json({
+            message: 'Internal server error: Failed to upload property brochure',
+            error: error.message
+        });
+    }
+}
+
 export {
     Create, GetAllProperty, GetAllNotPublishedProperty, GetAllPropertyWithParams, GetPropertyById, Edit, DeleteById,
     CreatePropertyImageByPropertyId, GetAllPropertyImagesByPropertyId, GetPropertyImageById, DeletePropertyImageById, DeleteAllPropertyImageById,
-    CreatePropertyImageByPropertyIdV2, GetHomeProperties
+    CreatePropertyImageByPropertyIdV2, GetHomeProperties, UploadPropertyBrochure
 }

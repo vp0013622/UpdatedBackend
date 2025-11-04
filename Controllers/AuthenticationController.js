@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken"
 import * as dotenv from 'dotenv'
 import { emailRegex, SALT } from "../config.js"
 import { RolesModel } from "../Models/RolesModel.js"
+import config from "../config/environment.js"
 dotenv.config()
 
 
@@ -51,7 +52,16 @@ const Login = async (req, res) => {
             return res.status(401).json({ message: "Access denied: role not found" });
         }
 
-        var token = jwt.sign({id: user._id, role: userRoleDoc.name}, process.env.JWT_SECRET, {expiresIn:"1d"})
+        // Use JWT_SECRET from config to ensure consistency
+        const jwtSecret = config.JWT_SECRET || process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            return res.status(500).json({
+                message: 'Server configuration error',
+                error: 'JWT_SECRET is not configured'
+            });
+        }
+
+        var token = jwt.sign({id: user._id, role: userRoleDoc.name}, jwtSecret, {expiresIn:"1d"})
         user.password = ""
         return res.status(200).json({
             message: 'user logged in successfully, session will be ended on next 24H',

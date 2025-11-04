@@ -205,13 +205,124 @@ const Create = async (req, res) => {
 /**
  * Get all purchase bookings with populated property, customer, and salesperson details
  * Returns all purchase bookings with complete booking information
+ * Supports search and status filtering via query parameters
  */
 const GetAllPurchaseBookings = async (req, res) => {
     try {
-        const purchaseBookings = await PurchaseBookingModel.find({ published: true })
+        const { search, status } = req.query;
+        
+        // Build the base query
+        let query = { published: true };
+        
+        // Add status filter if provided
+        if (status && status !== 'all' && status.trim() !== '') {
+            query.bookingStatus = status;
+        }
+        
+        // If search term is provided, use aggregation pipeline for complex search
+        let purchaseBookings;
+        
+        if (search && search.trim() !== '') {
+            const searchTerm = search.trim();
+            const searchRegex = new RegExp(searchTerm, 'i'); // Case-insensitive search
+            
+            // Get actual collection names from models
+            const propertyCollection = PropertyModel.collection.name;
+            const userCollection = UsersModel.collection.name;
+            
+            // Use aggregation to search across populated fields
+            purchaseBookings = await PurchaseBookingModel.aggregate([
+                { $match: query },
+                {
+                    $lookup: {
+                        from: propertyCollection,
+                        localField: 'propertyId',
+                        foreignField: '_id',
+                        as: 'property'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: userCollection,
+                        localField: 'customerId',
+                        foreignField: '_id',
+                        as: 'customer'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: userCollection,
+                        localField: 'assignedSalespersonId',
+                        foreignField: '_id',
+                        as: 'salesperson'
+                    }
+                },
+                {
+                    $addFields: {
+                        propertyDoc: { $arrayElemAt: ['$property', 0] },
+                        customerDoc: { $arrayElemAt: ['$customer', 0] },
+                        salespersonDoc: { $arrayElemAt: ['$salesperson', 0] }
+                    }
+                },
+                {
+                    $addFields: {
+                        // Extract searchable fields from the documents
+                        propertyName: { $ifNull: ['$propertyDoc.name', ''] },
+                        customerFirstName: { $ifNull: ['$customerDoc.firstName', ''] },
+                        customerLastName: { $ifNull: ['$customerDoc.lastName', ''] },
+                        customerEmail: { $ifNull: ['$customerDoc.email', ''] },
+                        customerPhone: { $ifNull: ['$customerDoc.phone', ''] }
+                    }
+                },
+                {
+                    $match: {
+                        $or: [
+                            { bookingId: searchRegex },
+                            { propertyName: searchRegex },
+                            { customerFirstName: searchRegex },
+                            { customerLastName: searchRegex },
+                            { customerEmail: searchRegex },
+                            { customerPhone: searchRegex }
+                        ]
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        bookingId: 1,
+                        bookingStatus: 1,
+                        propertyId: '$propertyDoc',
+                        customerId: '$customerDoc',
+                        assignedSalespersonId: '$salespersonDoc',
+                        totalPropertyValue: 1,
+                        downPayment: 1,
+                        loanAmount: 1,
+                        isFinanced: 1,
+                        bankName: 1,
+                        loanTenure: 1,
+                        interestRate: 1,
+                        emiAmount: 1,
+                        paymentTerms: 1,
+                        installmentCount: 1,
+                        installmentSchedule: 1,
+                        documents: 1,
+                        isActive: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        createdByUserId: 1,
+                        updatedByUserId: 1,
+                        published: 1
+                    }
+                }
+            ]);
+        } else {
+            // Simple query without search
+            purchaseBookings = await PurchaseBookingModel.find(query)
             .populate('propertyId')
             .populate('customerId')
-            .populate('assignedSalespersonId');
+                .populate('assignedSalespersonId')
+                .lean(); // Use lean() for better performance
+        }
 
         return res.status(200).json({
             message: 'All purchase bookings retrieved successfully',

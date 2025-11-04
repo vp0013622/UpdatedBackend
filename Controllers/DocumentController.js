@@ -98,12 +98,24 @@ const Create = async (req, res) => {
 
 const GetAllDocument = async (req, res) => {
   try {
-    // Only management roles can view all documents
-    const documents = await DocumentModel.find({ published: true })
+    // Build filter based on user role
+    let filter = { published: true };
+    
+    // Get user role and ID
+    const userRole = req.user?.role?.toUpperCase();
+    const userId = req.user?.id;
+    
+    // Admin can see all documents
+    // Executive and Sales can only see documents they uploaded (createdByUserId)
+    if (userRole !== 'ADMIN' && userId) {
+      filter.createdByUserId = userId;
+    }
+    
+    const documents = await DocumentModel.find(filter)
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
-      message: 'All documents retrieved successfully',
+      message: 'Documents retrieved successfully',
       count: documents.length,
       data: documents
     });
@@ -126,6 +138,10 @@ const GetAllDocumentWithParams = async (req, res) => {
       published = null 
     } = req.body;
 
+    // Get user role and ID for filtering
+    const userRole = req.user?.role?.toUpperCase();
+    const loggedInUserId = req.user?.id;
+
     let filter = {};
 
     if (userId !== null) {
@@ -139,12 +155,27 @@ const GetAllDocumentWithParams = async (req, res) => {
     }
     if (createdByUserId !== null) {
       filter.createdByUserId = createdByUserId;
+      // For non-admin users, ensure they can only filter by their own createdByUserId
+      if (userRole !== 'ADMIN' && createdByUserId !== loggedInUserId) {
+        return res.status(403).json({
+          message: 'Access denied: You can only filter documents you created',
+          data: []
+        });
+      }
+    } else {
+      // If createdByUserId is not specified, apply role-based filtering
+      if (userRole !== 'ADMIN' && loggedInUserId) {
+        filter.createdByUserId = loggedInUserId;
+      }
     }
     if (updatedByUserId !== null) {
       filter.updatedByUserId = updatedByUserId;
     }
     if (published !== null) {
       filter.published = published;
+    } else {
+      // Default to published documents only
+      filter.published = true;
     }
 
     // Only management roles can filter documents

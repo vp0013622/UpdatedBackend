@@ -3,6 +3,35 @@ import { RentalBookingModel } from "../../Models/booking/RentalBookingModel.js";
 import { PurchaseBookingModel } from "../../Models/booking/PurchaseBookingModel.js";
 
 /**
+ * Helper function to populate booking based on bookingType for a single payment
+ */
+const populatePaymentBooking = async (payment) => {
+    const paymentObj = payment.toObject ? payment.toObject() : payment;
+    if (payment.bookingType === 'RENTAL' && payment.rentalBookingId) {
+        await payment.populate({
+            path: 'rentalBookingId',
+            populate: [
+                { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+            ]
+        });
+        paymentObj.bookingId = payment.rentalBookingId;
+    } else if (payment.bookingType === 'PURCHASE' && payment.purchaseBookingId) {
+        await payment.populate({
+            path: 'purchaseBookingId',
+            populate: [
+                { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+            ]
+        });
+        paymentObj.bookingId = payment.purchaseBookingId;
+    }
+    return paymentObj;
+};
+
+/**
  * Get all payment history records with populated references
  * Returns all payment transactions with customer, property, and user details
  */
@@ -10,17 +39,21 @@ const GetAllPaymentHistory = async (req, res) => {
     try {
         const payments = await PaymentHistoryModel.find({ published: true })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'All payment history retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -39,12 +72,11 @@ const GetPaymentById = async (req, res) => {
     try {
         const { id } = req.params;
         const payment = await PaymentHistoryModel.findById(id)
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
 
         if (!payment) {
             return res.status(404).json({
@@ -53,9 +85,33 @@ const GetPaymentById = async (req, res) => {
             });
         }
 
+        // Populate booking based on bookingType
+        const paymentObj = payment.toObject();
+        if (payment.bookingType === 'RENTAL' && payment.rentalBookingId) {
+            await payment.populate({
+                path: 'rentalBookingId',
+                populate: [
+                    { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                    { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                    { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+                ]
+            });
+            paymentObj.bookingId = payment.rentalBookingId;
+        } else if (payment.bookingType === 'PURCHASE' && payment.purchaseBookingId) {
+            await payment.populate({
+                path: 'purchaseBookingId',
+                populate: [
+                    { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                    { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                    { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+                ]
+            });
+            paymentObj.bookingId = payment.purchaseBookingId;
+        }
+
         return res.status(200).json({
             message: 'Payment retrieved successfully',
-            data: payment
+            data: paymentObj
         });
 
     } catch (error) {
@@ -69,25 +125,34 @@ const GetPaymentById = async (req, res) => {
 /**
  * Get all payments for a specific booking (rental or purchase)
  * Returns all payment transactions associated with a particular booking ID
+ * Note: bookingId can be either rentalBookingId or purchaseBookingId
  */
 const GetPaymentsByBookingId = async (req, res) => {
     try {
         const { bookingId } = req.params;
         const payments = await PaymentHistoryModel.find({ 
-            bookingId: bookingId,
+            $or: [
+                { rentalBookingId: bookingId },
+                { purchaseBookingId: bookingId }
+            ],
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -110,17 +175,21 @@ const GetPaymentsByResponsiblePerson = async (req, res) => {
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -154,17 +223,21 @@ const GetPaymentsByDateRange = async (req, res) => {
             published: true
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -187,17 +260,21 @@ const GetPaymentsByType = async (req, res) => {
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -220,17 +297,21 @@ const GetPaymentsByBookingType = async (req, res) => {
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -264,16 +345,18 @@ const UpdatePayment = async (req, res) => {
             updateData,
             { new: true }
         )
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentWithBooking = await populatePaymentBooking(updatedPayment);
 
         return res.status(200).json({
             message: 'Payment updated successfully',
-            data: updatedPayment
+            data: paymentWithBooking
         });
 
     } catch (error) {
@@ -456,17 +539,21 @@ const GetPaymentsByStatus = async (req, res) => {
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -488,17 +575,201 @@ const GetUnreconciledPayments = async (req, res) => {
             published: true 
         })
             .sort({ createdAt: -1 })
-            .populate('bookingId')
-            .populate('responsiblePersonId')
-            .populate('recordedByUserId')
-            .populate('approvedByUserId')
-            .populate('createdByUserId')
-            .populate('updatedByUserId');
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
 
         return res.status(200).json({
             message: 'Unreconciled payments retrieved successfully',
-            count: payments.length,
-            data: payments
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Get assigned payment history for executives
+ * Returns payments for purchases/bookings they assigned or initiated for clients
+ * Filters by: responsiblePersonId OR booking's assignedSalespersonId OR booking's createdByUserId
+ */
+const GetAssignedPaymentHistory = async (req, res) => {
+    try {
+        const loggedInUserId = req.user?.id;
+        const userRole = req.user?.role?.toUpperCase();
+
+        if (!loggedInUserId) {
+            return res.status(401).json({
+                message: 'Unauthorized',
+                data: []
+            });
+        }
+
+        // For admin, return all payments (same as GetAllPaymentHistory)
+        if (userRole === 'ADMIN') {
+            const payments = await PaymentHistoryModel.find({ published: true })
+                .sort({ createdAt: -1 })
+                .populate('responsiblePersonId', 'firstName lastName email')
+                .populate('recordedByUserId', 'firstName lastName email')
+                .populate('approvedByUserId', 'firstName lastName email')
+                .populate('createdByUserId', 'firstName lastName email')
+                .populate('updatedByUserId', 'firstName lastName email');
+
+            const paymentsWithBookings = await Promise.all(
+                payments.map(async (payment) => {
+                    const paymentObj = payment.toObject();
+                    if (payment.bookingType === 'RENTAL' && payment.rentalBookingId) {
+                        await payment.populate({
+                            path: 'rentalBookingId',
+                            populate: [
+                                { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                                { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                                { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+                            ]
+                        });
+                        paymentObj.bookingId = payment.rentalBookingId;
+                    } else if (payment.bookingType === 'PURCHASE' && payment.purchaseBookingId) {
+                        await payment.populate({
+                            path: 'purchaseBookingId',
+                            populate: [
+                                { path: 'customerId', select: 'firstName lastName email phoneNumber' },
+                                { path: 'propertyId', select: 'name propertyAddress propertyTypeId' },
+                                { path: 'assignedSalespersonId', select: 'firstName lastName email' }
+                            ]
+                        });
+                        paymentObj.bookingId = payment.purchaseBookingId;
+                    }
+                    return paymentObj;
+                })
+            );
+
+            return res.status(200).json({
+                message: 'Assigned payment history retrieved successfully',
+                count: paymentsWithBookings.length,
+                data: paymentsWithBookings
+            });
+        }
+
+        // For executives/sales: Get payments where they are responsible OR booking was assigned/created by them
+        // Step 1: Get all bookings where this executive is assigned or created
+        const rentalBookings = await RentalBookingModel.find({
+            $or: [
+                { assignedSalespersonId: loggedInUserId },
+                { createdByUserId: loggedInUserId }
+            ]
+        }).select('_id');
+
+        const purchaseBookings = await PurchaseBookingModel.find({
+            $or: [
+                { assignedSalespersonId: loggedInUserId },
+                { createdByUserId: loggedInUserId }
+            ]
+        }).select('_id');
+
+        const rentalBookingIds = rentalBookings.map(b => b._id);
+        const purchaseBookingIds = purchaseBookings.map(b => b._id);
+
+        // Step 2: Get payments where:
+        // - responsiblePersonId matches logged-in user, OR
+        // - rentalBookingId is in the list of bookings assigned to them, OR
+        // - purchaseBookingId is in the list of bookings assigned to them
+        const payments = await PaymentHistoryModel.find({
+            published: true,
+            $or: [
+                { responsiblePersonId: loggedInUserId },
+                { rentalBookingId: { $in: rentalBookingIds } },
+                { purchaseBookingId: { $in: purchaseBookingIds } }
+            ]
+        })
+            .sort({ createdAt: -1 })
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
+
+        return res.status(200).json({
+            message: 'Assigned payment history retrieved successfully',
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Get my payment history for clients
+ * Returns payments for bookings where the logged-in user is the customer
+ */
+const GetMyPaymentHistory = async (req, res) => {
+    try {
+        const loggedInUserId = req.user?.id;
+
+        if (!loggedInUserId) {
+            return res.status(401).json({
+                message: 'Unauthorized',
+                data: []
+            });
+        }
+
+        // Get all bookings where this user is the customer
+        const rentalBookings = await RentalBookingModel.find({
+            customerId: loggedInUserId
+        }).select('_id');
+
+        const purchaseBookings = await PurchaseBookingModel.find({
+            customerId: loggedInUserId
+        }).select('_id');
+
+        const rentalBookingIds = rentalBookings.map(b => b._id);
+        const purchaseBookingIds = purchaseBookings.map(b => b._id);
+
+        // Get payments for these bookings
+        const payments = await PaymentHistoryModel.find({
+            published: true,
+            $or: [
+                { rentalBookingId: { $in: rentalBookingIds } },
+                { purchaseBookingId: { $in: purchaseBookingIds } }
+            ]
+        })
+            .sort({ createdAt: -1 })
+            .populate('responsiblePersonId', 'firstName lastName email')
+            .populate('recordedByUserId', 'firstName lastName email')
+            .populate('approvedByUserId', 'firstName lastName email')
+            .populate('createdByUserId', 'firstName lastName email')
+            .populate('updatedByUserId', 'firstName lastName email');
+
+        // Populate booking based on bookingType
+        const paymentsWithBookings = await Promise.all(
+            payments.map(payment => populatePaymentBooking(payment))
+        );
+
+        return res.status(200).json({
+            message: 'My payment history retrieved successfully',
+            count: paymentsWithBookings.length,
+            data: paymentsWithBookings
         });
 
     } catch (error) {
@@ -523,5 +794,7 @@ export {
     ReconcilePayment,
     GetPaymentSummary,
     GetPaymentsByStatus,
-    GetUnreconciledPayments
+    GetUnreconciledPayments,
+    GetAssignedPaymentHistory,
+    GetMyPaymentHistory
 }; 

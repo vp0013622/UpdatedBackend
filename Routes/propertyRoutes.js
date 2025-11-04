@@ -1,12 +1,12 @@
 import express from 'express'
-import { Create, GetAllProperty, GetAllNotPublishedProperty, GetAllPropertyWithParams, GetPropertyById, Edit, DeleteById, CreatePropertyImageByPropertyId, GetAllPropertyImagesByPropertyId, GetPropertyImageById, DeletePropertyImageById, DeleteAllPropertyImageById, CreatePropertyImageByPropertyIdV2, GetHomeProperties } from '../Controllers/PropertyController.js'
+import { Create, GetAllProperty, GetAllNotPublishedProperty, GetAllPropertyWithParams, GetPropertyById, Edit, DeleteById, CreatePropertyImageByPropertyId, GetAllPropertyImagesByPropertyId, GetPropertyImageById, DeletePropertyImageById, DeleteAllPropertyImageById, CreatePropertyImageByPropertyIdV2, GetHomeProperties, UploadPropertyBrochure } from '../Controllers/PropertyController.js'
 import { RoleAuthMiddleware } from '../Middlewares/RoleAuthMiddelware.js'
 import { MulterImageHandler } from '../Middlewares/Handlers/MulterHandler.js'
-import { UploadPropertyImage } from '../Middlewares/FileUploadMiddelware.js'
+import { UploadPropertyImage, UploadPropertyBrochure as UploadPropertyBrochureMiddleware } from '../Middlewares/FileUploadMiddelware.js'
 const PropertyRouter = express.Router()
 
 PropertyRouter.post('/create',  RoleAuthMiddleware("admin", "executive"), Create)
-PropertyRouter.get('/',  RoleAuthMiddleware("admin", "sales", "executive", "saller", "user"),  GetAllProperty)
+PropertyRouter.get('/', GetAllProperty) // Public endpoint - allow viewing properties without login
 PropertyRouter.get('/home', GetHomeProperties) // Public endpoint for home page
 PropertyRouter.get('/notpublishedproperties', RoleAuthMiddleware("admin"), GetAllNotPublishedProperty)
 PropertyRouter.post('/withparams', RoleAuthMiddleware("admin","executive"), GetAllPropertyWithParams)
@@ -19,8 +19,11 @@ PropertyRouter.get('/image/:id', GetPropertyImageById)
 PropertyRouter.delete('/image/delete/:id', DeletePropertyImageById)
 PropertyRouter.delete('/image/delete/all/:id', DeleteAllPropertyImageById)
 
+//property brochure
+PropertyRouter.post('/brochure/upload/:id', RoleAuthMiddleware("admin", "executive"), MulterImageHandler(UploadPropertyBrochureMiddleware.single('brochure')), UploadPropertyBrochure)
+
 // Generic routes should come last
-PropertyRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive", "saller", "user"), GetPropertyById)
+PropertyRouter.get('/:id', GetPropertyById) // Public endpoint - allow viewing property details without login
 PropertyRouter.put('/edit/:id', RoleAuthMiddleware("admin", "executive"), Edit)
 PropertyRouter.delete('/delete/:id', RoleAuthMiddleware("admin"), DeleteById)
 

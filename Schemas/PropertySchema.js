@@ -81,6 +81,11 @@ export const PropertySchema = mongoose.Schema(
             type: Boolean,
             required: true,
         },
+        brochureUrl: {
+            type: String,
+            trim: true,
+            default: null
+        },
     },
     {
         timestamps: true,

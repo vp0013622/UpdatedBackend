@@ -92,4 +92,24 @@ const UploadBookingDocument = multer({
   },
 });
 
-export { UploadProfilePicture, UploadPropertyImage, UploadDocument, UploadBookingDocument };
+// PDF Filter for Property Brochures
+const PDFFilter = (req, file, cb) => {
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed for property brochures'), false);
+  }
+};
+
+// Property Brochure Storage
+const propertyBrochureStorage = multer.memoryStorage();
+
+const UploadPropertyBrochure = multer({
+  storage: propertyBrochureStorage,
+  fileFilter: PDFFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB for property brochures
+  },
+});
+
+export { UploadProfilePicture, UploadPropertyImage, UploadDocument, UploadBookingDocument, UploadPropertyBrochure };
