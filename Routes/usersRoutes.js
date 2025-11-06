@@ -5,11 +5,11 @@ import { AuthMiddelware } from '../Middlewares/AuthMiddelware.js'
 
 const UsersRouter = express.Router()
 UsersRouter.post('/register',  RoleAuthMiddleware("admin"), Register) //only admin
-UsersRouter.get('/',  RoleAuthMiddleware("admin"), GetAllUsers)//only for admin
+UsersRouter.get('/',  RoleAuthMiddleware("admin","executive","sales"), GetAllUsers)//only for admin
 UsersRouter.get('/notpublishedusers',  RoleAuthMiddleware("admin"), GetAllNotPublishedUsers)//only for admin
-UsersRouter.post('/withparams',  RoleAuthMiddleware("admin"), GetAllUsersWithParams)//only for admin
+UsersRouter.post('/withparams',  RoleAuthMiddleware("admin","executive","sales"), GetAllUsersWithParams)//only for admin
 UsersRouter.get('/:id',  AuthMiddelware, GetUserById)//for all authenticated users
-UsersRouter.put('/edit/:id',  RoleAuthMiddleware("admin"), Edit)//only for admin
-UsersRouter.delete('/delete/:id',  RoleAuthMiddleware("admin"), DeleteById)//only for admin
+UsersRouter.put('/edit/:id',  RoleAuthMiddleware("admin","executive"), Edit)//only for admin
+UsersRouter.delete('/delete/:id',  RoleAuthMiddleware("admin","executive"), DeleteById)//only for admin
 UsersRouter.post('/change-password', AuthMiddelware, ChangePassword)//for all authenticated users
 export default UsersRouter
