@@ -55,6 +55,7 @@ export const PropertySchema = mongoose.Schema(
             bedRooms: { type: Number, required: true },
             bathRooms: { type: Number, required: true },
             areaInSquarFoot: { type: Number, required: true },
+            bhk: { type: Number, default: null }, // BHK (Bedroom, Hall, Kitchen) - e.g., 1, 2, 3, 4
             amenities: { type: [String], default: [] }
           },
           required: true

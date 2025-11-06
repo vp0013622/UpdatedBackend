@@ -244,8 +244,8 @@ app.use('/api/normaluser', RegisterNormalUserRouter)
 app.use('/api/users',AuthMiddelware, UsersRouter)
 app.use('/api/roles',AuthMiddelware, RolesRouter)
 app.use('/api/useraddress',AuthMiddelware, UserAddressRouter)
-app.use('/api/propertytypes',AuthMiddelware, PropertyTypesRouter)
-app.use('/api/property',AuthMiddelware, PropertyRouter)
+app.use('/api/propertytypes', PropertyTypesRouter) // Public access for GET /, protected routes have their own middleware
+app.use('/api/property', PropertyRouter) // Public access for GET / and GET /home, protected routes have their own middleware
 app.use('/api/favoriteproperty',AuthMiddelware, FavoritePropertyRouter)
 app.use('/api/followupstatus',AuthMiddelware, FollowUpStatusRouter)
 app.use('/api/leadstatus',AuthMiddelware, LeadStatusRouter)

@@ -129,11 +129,9 @@ export class ImageUploadService {
                 resource_type: 'auto', // Auto-detect resource type (PDF)
             });
 
-            // Generate secure URL
-            const brochureUrl = cloudinary.url(uploadResult.public_id, {
-                secure: true,
-                resource_type: uploadResult.resource_type
-            });
+            // Use secure_url directly from Cloudinary - same as documents use originalUrl from secure_url
+            // secure_url is the most reliable format and works without 401 errors
+            const brochureUrl = uploadResult.secure_url;
 
             return {
                 success: true,
@@ -246,13 +244,9 @@ export class ImageUploadService {
                 ]
             });
 
-
-
-            // Generate URLs
-            const originalUrl = cloudinary.url(uploadResult.public_id, {
-                secure: true,
-                resource_type: uploadResult.resource_type
-            });
+            // Use secure_url directly from Cloudinary - most reliable format
+            // This ensures URLs work without 401 errors
+            const originalUrl = uploadResult.secure_url;
 
             // For documents, we might not have thumbnail/medium/display variants
             // but we'll provide the original URL for all
