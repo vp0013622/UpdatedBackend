@@ -8,7 +8,7 @@ dotenv.config()
 
 const Register = async (req, res) => {
     try {
-        const { email, password, firstName, lastName, phoneNumber, role } = req.body
+        const { email, password, firstName, lastName, phoneNumber, role, isAgent = false } = req.body
         if (!email || !password || !firstName || !lastName || !role) {
             return res.status(400).json({
                 message: 'bad request check data again',
@@ -42,7 +42,8 @@ const Register = async (req, res) => {
             role: roleData._id,
             createdByUserId: req.user.id,
             updatedByUserId: req.user.id,
-            published: true
+            published: true,
+            isAgent: isAgent === true || isAgent === 'true'
         }
         const user = await UsersModel.create(newUser)
         user.password = ""
@@ -98,7 +99,7 @@ const GetAllNotPublishedUsers = async (req, res) => {
 
 const GetAllUsersWithParams = async (req, res) => {
     try {
-        const { email = null, firstName = null, lastName = null, phoneNumber = null, roleId = null, published = null } = req.body
+        const { email = null, firstName = null, lastName = null, phoneNumber = null, roleId = null, published = null, isAgent = null } = req.body
         let filter = {}
 
         if (email !== null) {
@@ -119,6 +120,9 @@ const GetAllUsersWithParams = async (req, res) => {
         if (published !== null) {
             filter.published = published
         }
+        if (isAgent !== null) {
+            filter.isAgent = isAgent === true || isAgent === 'true'
+        }
 
         const users = await UsersModel.find(filter)
             .sort({ createdAt: -1 })
@@ -127,6 +131,30 @@ const GetAllUsersWithParams = async (req, res) => {
             message: 'all users',
             count: users.length,
             data: users
+        })
+    }
+    catch (error) {
+        res.status(500).json({
+            message: 'internal server error',
+            error: error.message
+        })
+    }
+}
+
+const GetAgents = async (req, res) => {
+    try {
+        const agents = await UsersModel.find({ 
+            isAgent: true, 
+            published: true 
+        })
+        .populate('role', 'name')
+        .sort({ createdAt: -1 })
+        .limit(10)
+
+        return res.status(200).json({
+            message: 'agents retrieved successfully',
+            count: agents.length,
+            data: agents
         })
     }
     catch (error) {
@@ -162,7 +190,7 @@ const GetUserById = async (req, res) => {
 
 const Edit = async (req, res) => {
     try {
-        const { email, firstName, lastName, phoneNumber, password = null, role, published = true } = req.body
+        const { email, firstName, lastName, phoneNumber, password = null, role, published = true, isAgent = false } = req.body
         if (!email || !firstName || !lastName || !role) {
             return res.status(400).json({
                 message: 'bad request check data again',
@@ -205,7 +233,8 @@ const Edit = async (req, res) => {
             role: roleData._id,
             createdByUserId: user.createdByUserId,
             updatedByUserId: req.user.id,
-            published: published
+            published: published,
+            isAgent: isAgent === true || isAgent === 'true'
         }
         
         const result = await UsersModel.findByIdAndUpdate(id, newUser)
@@ -334,5 +363,6 @@ export {
     GetUserById,
     Edit,
     DeleteById,
-    ChangePassword
+    ChangePassword,
+    GetAgents
 }

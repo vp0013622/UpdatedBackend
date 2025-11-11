@@ -7,6 +7,7 @@ import {AuthMiddelware} from './Middlewares/AuthMiddelware.js'
 import {RoleAuthMiddleware} from './Middlewares/RoleAuthMiddelware.js'
 import { errorHandler } from './Middlewares/Handlers/ErrorHandler.js'
 import UsersRouter from './Routes/usersRoutes.js'
+import { GetAgents } from './Controllers/UsersController.js'
 import LoginRoute from './Routes/login.js'
 import RegisterNormalUserRouter from './Routes/registerNormalUser.js'
 import RolesRouter from './Routes/rolesRoutes.js'
@@ -241,6 +242,11 @@ app.use('/api/file/userprofilepicture', AuthMiddelware, RoleAuthMiddleware("admi
 app.use('/api/contactus', ContactUsRouter)
 app.use('/api/auth', LoginRoute)
 app.use('/api/normaluser', RegisterNormalUserRouter)
+
+// Public routes (no authentication required)
+app.get('/api/agents', GetAgents) // Public endpoint for agents - separate path to avoid conflicts
+
+// Protected routes
 app.use('/api/users',AuthMiddelware, UsersRouter)
 app.use('/api/roles',AuthMiddelware, RolesRouter)
 app.use('/api/useraddress',AuthMiddelware, UserAddressRouter)

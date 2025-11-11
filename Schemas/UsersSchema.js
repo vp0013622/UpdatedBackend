@@ -48,6 +48,10 @@ export const UsersSchema = mongoose.Schema(
             type: Boolean,
             required: true,
         },
+        isAgent: {
+            type: Boolean,
+            default: false,
+        },
         // resetPasswordToken: {
         //   type: String,
         //   default: null
