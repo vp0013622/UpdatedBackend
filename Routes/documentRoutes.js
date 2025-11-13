@@ -19,9 +19,9 @@ DocumentRouter.put('/edit/:id', RoleAuthMiddleware("admin", "sales", "executive"
 DocumentRouter.delete('/delete/:id', RoleAuthMiddleware("admin", "sales", "executive", "saller", "user"), DeleteById)
 
 // Management can view all documents
-DocumentRouter.get('/', RoleAuthMiddleware("admin", "sales", "executive"), GetAllDocument)
+DocumentRouter.get('/', RoleAuthMiddleware("admin", "sales", "executive", "user"), GetAllDocument)
 
 // Management can filter documents
-DocumentRouter.post('/withparams', RoleAuthMiddleware("admin", "sales", "executive"), GetAllDocumentWithParams)
+DocumentRouter.post('/withparams', RoleAuthMiddleware("admin", "sales", "executive", "user"), GetAllDocumentWithParams)
 
 export default DocumentRouter
