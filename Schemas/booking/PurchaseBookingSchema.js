@@ -62,6 +62,128 @@ export const PurchaseBookingSchema = mongoose.Schema(
             default: 0
         },
         
+        // Property Booking Form Fields
+        developer: {
+            type: String,
+            trim: true
+        },
+        channelPartnerName: {
+            type: String,
+            trim: true,
+            default: "inhabit pro realities"
+        },
+        projectName: {
+            type: String,
+            trim: true
+        },
+        location: {
+            type: String,
+            trim: true
+        },
+        tcfNumber: {
+            type: String,
+            trim: true
+        },
+        
+        // Buyer Details
+        buyerFullName: {
+            type: String,
+            trim: true
+        },
+        buyerAddress: {
+            type: String,
+            trim: true
+        },
+        buyerCityPin: {
+            type: String,
+            trim: true
+        },
+        buyerMobileNo: {
+            type: String,
+            trim: true
+        },
+        buyerEmailId: {
+            type: String,
+            trim: true
+        },
+        buyerAadharNo: {
+            type: String,
+            trim: true
+        },
+        buyerPanNo: {
+            type: String,
+            trim: true
+        },
+        
+        // Additional Property Details
+        flatNo: {
+            type: String,
+            trim: true
+        },
+        floorNo: {
+            type: Number
+        },
+        balconies: {
+            type: Number
+        },
+        otherDetails: {
+            type: String,
+            trim: true
+        },
+        towerWing: {
+            type: String,
+            trim: true
+        },
+        propertyType: {
+            type: String,
+            trim: true
+        },
+        propertyTypeOther: {
+            type: String,
+            trim: true
+        },
+        carpetArea: {
+            type: String,
+            trim: true
+        },
+        facing: {
+            type: String,
+            trim: true
+        },
+        parkingNo: {
+            type: String,
+            trim: true
+        },
+        specialFeatures: {
+            type: String,
+            trim: true
+        },
+        
+        // Additional Financial Details
+        bookingAmount: {
+            type: Number,
+            default: 0
+        },
+        paymentMode: {
+            type: String,
+            trim: true
+        },
+        financeMode: {
+            type: String,
+            trim: true
+        },
+        totalEmi: {
+            type: Number,
+            default: 0
+        },
+        transactionChequeNo: {
+            type: String,
+            trim: true
+        },
+        bookingDate: {
+            type: Date
+        },
+        
         // Financing Details
         // Whether the purchase involves bank financing
         isFinanced: {
@@ -197,7 +319,22 @@ export const PurchaseBookingSchema = mongoose.Schema(
             // Document type/category
             documentType: {
                 type: String,
-                enum: ["CONTRACT", "AGREEMENT", "ID_PROOF", "ADDRESS_PROOF", "INCOME_PROOF", "BANK_STATEMENT", "OTHER"],
+                enum: [
+                    "CONTRACT", 
+                    "AGREEMENT", 
+                    "ID_PROOF", 
+                    "AADHAR_CARD",
+                    "AADHAR_FRONT",
+                    "AADHAR_BACK",
+                    "PAN_CARD",
+                    "ADDRESS_PROOF", 
+                    "INCOME_PROOF", 
+                    "BANK_STATEMENT",
+                    "TRANSACTION_DOCUMENT",
+                    "INSTALLMENT_PROOF",
+                    "PAYMENT_RECEIPT",
+                    "OTHER"
+                ],
                 default: "OTHER"
             },
             // File size in bytes

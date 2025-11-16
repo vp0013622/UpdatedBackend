@@ -26,10 +26,15 @@ const PurchaseBookingRouter = express.Router()
 
 // Purchase Booking Management
 // Create a new purchase booking with property, customer, and payment terms
-// Supports document uploads during creation (up to 10 files)
+// Supports document uploads during creation (multiple file types)
 PurchaseBookingRouter.post('/create', 
     RoleAuthMiddleware("admin", "sales", "executive"), 
-    UploadBookingDocument.array('documents', 10), // Allow up to 10 documents
+    UploadBookingDocument.fields([
+        { name: 'documents', maxCount: 10 },
+        { name: 'aadharCard', maxCount: 1 },
+        { name: 'panCard', maxCount: 1 },
+        { name: 'transactionDocument', maxCount: 1 }
+    ]),
     Create
 )
 
@@ -40,7 +45,7 @@ PurchaseBookingRouter.get('/all', RoleAuthMiddleware("admin", "sales", "executiv
 PurchaseBookingRouter.get('/my-bookings/:userId', AuthMiddelware, GetMyPurchaseBookings)
 
 // Get a specific purchase booking by ID with populated details
-PurchaseBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive"), GetPurchaseBookingById)
+PurchaseBookingRouter.get('/:id', RoleAuthMiddleware("admin", "sales", "executive","user"), GetPurchaseBookingById)
 
 // Update purchase booking details (property, payment terms, financing details, etc.)
 PurchaseBookingRouter.put('/update/:id', RoleAuthMiddleware("admin", "sales", "executive"), UpdatePurchaseBooking)

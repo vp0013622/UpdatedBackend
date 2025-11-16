@@ -13,8 +13,8 @@ PropertyRouter.get('/notpublishedproperties', AuthMiddelware, RoleAuthMiddleware
 PropertyRouter.post('/withparams', GetAllPropertyWithParams)
 
 //property images - these routes must come before the generic /:id route to avoid conflicts
-PropertyRouter.post('/image/create/:id', MulterImageHandler(UploadPropertyImage.single('image')), CreatePropertyImageByPropertyId) 
-PropertyRouter.post('/image/upload/:id', MulterImageHandler(UploadPropertyImage.single('image')), CreatePropertyImageByPropertyIdV2) 
+PropertyRouter.post('/image/create/:id', AuthMiddelware, MulterImageHandler(UploadPropertyImage.single('image')), CreatePropertyImageByPropertyId) 
+PropertyRouter.post('/image/upload/:id', AuthMiddelware, MulterImageHandler(UploadPropertyImage.single('image')), CreatePropertyImageByPropertyIdV2) 
 PropertyRouter.get('/images/all/:id',  GetAllPropertyImagesByPropertyId)
 PropertyRouter.get('/image/:id', GetPropertyImageById)
 PropertyRouter.delete('/image/delete/:id', DeletePropertyImageById)

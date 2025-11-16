@@ -359,6 +359,16 @@ const CreatePropertyImageByPropertyId = async (req, res) =>{
             });
         }
     
+        // Get user ID from req.user (set by AuthMiddelware)
+        const userId = req.user?.id || req.user?._id || req.user?.userId;
+        
+        if (!userId) {
+          return res.status(401).json({
+            message: 'Authentication error: User ID not found in token',
+            error: 'Please ensure you are logged in and your session is valid'
+          });
+        }
+
         // Save new record with image URLs
         const newFile = {
           propertyId,
@@ -373,8 +383,8 @@ const CreatePropertyImageByPropertyId = async (req, res) =>{
           width: uploadResult.data.width,
           height: uploadResult.data.height,
           mimeType: uploadResult.data.mimeType,
-          createdByUserId: req.user?.id,
-          updatedByUserId: req.user?.id,
+          createdByUserId: userId,
+          updatedByUserId: userId,
           published: true,
         };
     
@@ -571,6 +581,16 @@ const CreatePropertyImageByPropertyIdV2 = async (req, res) =>{
             });
         }
     
+        // Get user ID from req.user (set by AuthMiddelware)
+        const userId = req.user?.id || req.user?._id || req.user?.userId;
+        
+        if (!userId) {
+          return res.status(401).json({
+            message: 'Authentication error: User ID not found in token',
+            error: 'Please ensure you are logged in and your session is valid'
+          });
+        }
+
         // Save new record with image URLs
         const newFile = {
           propertyId,
@@ -585,8 +605,8 @@ const CreatePropertyImageByPropertyIdV2 = async (req, res) =>{
           width: uploadResult.data.width,
           height: uploadResult.data.height,
           mimeType: uploadResult.data.mimeType,
-          createdByUserId: req.user?.id,
-          updatedByUserId: req.user?.id,
+          createdByUserId: userId,
+          updatedByUserId: userId,
           published: true,
         };
     

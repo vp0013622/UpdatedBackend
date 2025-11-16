@@ -64,7 +64,40 @@ const Create = async (req, res) => {
             bankName,
             loanTenure,
             interestRate,
-            emiAmount
+            emiAmount,
+            // Property Booking Form Fields
+            developer,
+            channelPartnerName,
+            projectName,
+            location,
+            tcfNumber,
+            // Buyer Details
+            buyerFullName,
+            buyerAddress,
+            buyerCityPin,
+            buyerMobileNo,
+            buyerEmailId,
+            buyerAadharNo,
+            buyerPanNo,
+            // Additional Property Details
+            flatNo,
+            floorNo,
+            balconies,
+            otherDetails,
+            towerWing,
+            propertyType,
+            propertyTypeOther,
+            carpetArea,
+            facing,
+            parkingNo,
+            specialFeatures,
+            // Additional Financial Details
+            bookingAmount,
+            paymentMode,
+            financeMode,
+            totalEmi,
+            transactionChequeNo,
+            bookingDate
         } = req.body;
 
         // Validation
@@ -128,6 +161,40 @@ const Create = async (req, res) => {
             totalPropertyValue,
             downPayment,
             loanAmount,
+            // Property Booking Form Fields
+            developer: developer || null,
+            channelPartnerName: channelPartnerName || "inhabit pro realities",
+            projectName: projectName || null,
+            location: location || null,
+            tcfNumber: tcfNumber || null,
+            // Buyer Details
+            buyerFullName: buyerFullName || null,
+            buyerAddress: buyerAddress || null,
+            buyerCityPin: buyerCityPin || null,
+            buyerMobileNo: buyerMobileNo || null,
+            buyerEmailId: buyerEmailId || null,
+            buyerAadharNo: buyerAadharNo || null,
+            buyerPanNo: buyerPanNo || null,
+            // Additional Property Details
+            flatNo: flatNo || null,
+            floorNo: floorNo || null,
+            balconies: balconies || null,
+            otherDetails: otherDetails || null,
+            towerWing: towerWing || null,
+            propertyType: propertyType || null,
+            propertyTypeOther: propertyTypeOther || null,
+            carpetArea: carpetArea || null,
+            facing: facing || null,
+            parkingNo: parkingNo || null,
+            specialFeatures: specialFeatures || null,
+            // Additional Financial Details
+            bookingAmount: bookingAmount || 0,
+            paymentMode: paymentMode || null,
+            financeMode: financeMode || null,
+            totalEmi: totalEmi || 0,
+            transactionChequeNo: transactionChequeNo || null,
+            bookingDate: bookingDate ? new Date(bookingDate) : null,
+            // Financing Details
             isFinanced: isFinanced || false,
             bankName: bankName || null,
             loanTenure: loanTenure || 0,
@@ -146,12 +213,14 @@ const Create = async (req, res) => {
         const purchaseBooking = await PurchaseBookingModel.create(newPurchaseBooking);
 
         // Handle document uploads if files are provided
-        if (req.files && req.files.length > 0) {
             const uploadedDocuments = [];
             
-            for (const file of req.files) {
-                try {
-                    // Upload document to Cloudinary
+        // Handle multiple file fields
+        if (req.files) {
+            // Handle general documents array
+            if (req.files.documents && Array.isArray(req.files.documents)) {
+                for (const file of req.files.documents) {
+                    try {
                     const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
                         file.buffer,
                         file.originalname,
@@ -163,7 +232,9 @@ const Create = async (req, res) => {
                             originalName: file.originalname,
                             cloudinaryId: uploadResult.data.cloudinaryId,
                             documentUrl: uploadResult.data.documentUrl,
-                            documentType: req.body.documentType || "OTHER",
+                                documentType: req.body.documentTypes && req.body.documentTypes[req.files.documents.indexOf(file)] 
+                                    ? req.body.documentTypes[req.files.documents.indexOf(file)] 
+                                    : "OTHER",
                             fileSize: uploadResult.data.size,
                             mimeType: uploadResult.data.mimeType,
                             uploadedByUserId: req.user.id
@@ -171,7 +242,86 @@ const Create = async (req, res) => {
                     }
                 } catch (uploadError) {
                     console.error('Document upload error:', uploadError);
-                    // Continue with other files even if one fails
+                    }
+                }
+            }
+
+            // Handle Aadhar Card
+            if (req.files.aadharCard && req.files.aadharCard[0]) {
+                try {
+                    const file = req.files.aadharCard[0];
+                    const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                        file.buffer,
+                        file.originalname,
+                        bookingId
+                    );
+
+                    if (uploadResult.success) {
+                        uploadedDocuments.push({
+                            originalName: file.originalname,
+                            cloudinaryId: uploadResult.data.cloudinaryId,
+                            documentUrl: uploadResult.data.documentUrl,
+                            documentType: "AADHAR_CARD",
+                            fileSize: uploadResult.data.size,
+                            mimeType: uploadResult.data.mimeType,
+                            uploadedByUserId: req.user.id
+                        });
+                    }
+                } catch (uploadError) {
+                    console.error('Aadhar Card upload error:', uploadError);
+                }
+            }
+
+            // Handle PAN Card
+            if (req.files.panCard && req.files.panCard[0]) {
+                try {
+                    const file = req.files.panCard[0];
+                    const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                        file.buffer,
+                        file.originalname,
+                        bookingId
+                    );
+
+                    if (uploadResult.success) {
+                        uploadedDocuments.push({
+                            originalName: file.originalname,
+                            cloudinaryId: uploadResult.data.cloudinaryId,
+                            documentUrl: uploadResult.data.documentUrl,
+                            documentType: "PAN_CARD",
+                            fileSize: uploadResult.data.size,
+                            mimeType: uploadResult.data.mimeType,
+                            uploadedByUserId: req.user.id
+                        });
+                    }
+                } catch (uploadError) {
+                    console.error('PAN Card upload error:', uploadError);
+                }
+            }
+
+            // Handle Transaction Document
+            if (req.files.transactionDocument && req.files.transactionDocument[0]) {
+                try {
+                    const file = req.files.transactionDocument[0];
+                    const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                        file.buffer,
+                        file.originalname,
+                        bookingId
+                    );
+
+                    if (uploadResult.success) {
+                        uploadedDocuments.push({
+                            originalName: file.originalname,
+                            cloudinaryId: uploadResult.data.cloudinaryId,
+                            documentUrl: uploadResult.data.documentUrl,
+                            documentType: "TRANSACTION_DOCUMENT",
+                            fileSize: uploadResult.data.size,
+                            mimeType: uploadResult.data.mimeType,
+                            uploadedByUserId: req.user.id
+                        });
+                    }
+                } catch (uploadError) {
+                    console.error('Transaction Document upload error:', uploadError);
+                }
                 }
             }
 
@@ -179,7 +329,6 @@ const Create = async (req, res) => {
             if (uploadedDocuments.length > 0) {
                 purchaseBooking.documents = uploadedDocuments;
                 await purchaseBooking.save();
-            }
         }
 
         //update the property status to sold
@@ -838,6 +987,7 @@ const GetMyPurchaseBookings = async (req, res) => {
             published: true
         }).select({
             _id: 1,
+            bookingId: 1,
             bookingStatus: 1,
             totalPropertyValue: 1,
             downPayment: 1,
@@ -845,8 +995,11 @@ const GetMyPurchaseBookings = async (req, res) => {
             paymentTerms: 1,
             installmentCount: 1,
             propertyId: 1,
+            customerId: 1,
             createdAt: 1
-        }).sort({ createdAt: -1 });
+        }).populate('propertyId')
+        .populate('customerId')
+        .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'My purchase bookings retrieved successfully',
