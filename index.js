@@ -28,6 +28,7 @@ import FollowUpStatusRouter from './Routes/followUpStatusRoutes.js'
 import LeadStatusRouter from './Routes/leadStatusRoutes.js'
 import ReferenceSourceRouter from './Routes/referenceSourceRoutes.js'
 import ContactUsRouter from './Routes/contactUsRoutes.js'
+import InquiriesRouter from './Routes/inquiriesRoutes.js'
 import DocumentRouter from './Routes/documentRoutes.js'
 import DocumentTypesRouter from './Routes/documentTypesRoutes.js'
 import DashboardRouter from './Routes/dashboardRoutes.js'
@@ -240,6 +241,7 @@ const createDefaultDocumentTypes = async () => {
 //file uploading
 app.use('/api/file/userprofilepicture', AuthMiddelware, RoleAuthMiddleware("admin", "sales", "executive", "user", "saller"), UserProfilePictureRouter)
 app.use('/api/contactus', ContactUsRouter)
+app.use('/api/inquiries', InquiriesRouter)
 app.use('/api/auth', LoginRoute)
 app.use('/api/normaluser', RegisterNormalUserRouter)
 
