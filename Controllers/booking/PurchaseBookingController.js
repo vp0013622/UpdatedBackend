@@ -17,6 +17,16 @@ const generateBookingId = () => {
 };
 
 /**
+ * Generate unique TCF (Token Confirmation Form) number for purchase bookings
+ * Creates a unique identifier with timestamp and random number
+ */
+const generateTCFNumber = () => {
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, ''); // Format: YYYYMMDD
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+    return `TCF${date}${randomSuffix}`; // Format: TCF202501291234
+};
+
+/**
  * Generate installment schedule for purchase bookings
  * Creates monthly installment payments with due dates and amounts
  */
@@ -70,7 +80,7 @@ const Create = async (req, res) => {
             channelPartnerName,
             projectName,
             location,
-            tcfNumber,
+            // tcfNumber is auto-generated, not needed from req.body
             // Buyer Details
             buyerFullName,
             buyerAddress,
@@ -144,6 +154,7 @@ const Create = async (req, res) => {
         }
 
         const bookingId = generateBookingId();
+        const generatedTCFNumber = generateTCFNumber(); // Auto-generate TCF number
         const loanAmount = totalPropertyValue - downPayment;
 
         // Generate installment schedule if installments
@@ -166,7 +177,7 @@ const Create = async (req, res) => {
             channelPartnerName: channelPartnerName || "inhabit pro realities",
             projectName: projectName || null,
             location: location || null,
-            tcfNumber: tcfNumber || null,
+            tcfNumber: generatedTCFNumber, // Auto-generated TCF number
             // Buyer Details
             buyerFullName: buyerFullName || null,
             buyerAddress: buyerAddress || null,
@@ -462,6 +473,9 @@ const GetAllPurchaseBookings = async (req, res) => {
                         updatedByUserId: 1,
                         published: 1
                     }
+                },
+                {
+                    $sort: { updatedAt: -1, createdAt: -1 } // Sort by latest updated first, then by latest created
                 }
             ]);
         } else {
@@ -470,6 +484,7 @@ const GetAllPurchaseBookings = async (req, res) => {
             .populate('propertyId')
             .populate('customerId')
                 .populate('assignedSalespersonId')
+                .sort({ updatedAt: -1, createdAt: -1 }) // Sort by latest updated first, then by latest created
                 .lean(); // Use lean() for better performance
         }
 

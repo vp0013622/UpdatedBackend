@@ -222,6 +222,17 @@ const Edit = async (req, res) => {
             })
         }
 
+        // Check if email already exists for another user
+        if (email !== user.email) {
+            const existingUser = await UsersModel.findOne({ email: email });
+            if (existingUser && existingUser._id.toString() !== id) {
+                return res.status(409).json({
+                    message: 'Email already exists. Please use a different email address.',
+                    error: 'Duplicate email'
+                })
+            }
+        }
+
         const roleData = await RolesModel.findById(role)
         const hashedPassword =  password != null && password != '' ? await bcrypt.hash(password, SALT) : null;
         const newUser = {
@@ -250,6 +261,15 @@ const Edit = async (req, res) => {
 
     }
     catch (error) {
+        // Handle MongoDB duplicate key error (E11000)
+        if (error.code === 11000 || error.message?.includes('duplicate key')) {
+            const field = error.keyPattern ? Object.keys(error.keyPattern)[0] : 'field';
+            return res.status(409).json({
+                message: `${field === 'email' ? 'Email' : 'This field'} already exists. Please use a different ${field === 'email' ? 'email address' : 'value'}.`,
+                error: 'Duplicate key error'
+            })
+        }
+        
         res.status(500).json({
             message: 'internal server error',
             error: error.message

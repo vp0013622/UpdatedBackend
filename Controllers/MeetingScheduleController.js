@@ -16,7 +16,9 @@ const Create = async (req, res) => {
             status, 
             customerIds, 
             propertyId, 
-            notes 
+            notes,
+            salesPersonId,
+            executiveId
         } = req.body;
         if (!title || !meetingDate || !startTime || !status || !customerIds) {
             return res.status(400).json({
@@ -47,6 +49,8 @@ const Create = async (req, res) => {
                 status,
                 scheduledByUserId: req.user.id,
                 customerId,
+                salesPersonId: salesPersonId || null,
+                executiveId: executiveId || null,
                 propertyId: propertyId || null,
                 notes: notes || "",
                 createdByUserId: req.user.id,
@@ -61,11 +65,14 @@ const Create = async (req, res) => {
             try {
                 await NotificationService.createMeetingNotification({
                     _id: meeting._id,
-                    userId: customerId,
                     title: title,
                     date: meetingDate,
                     time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
                     description: description || "",
+                    customerId: customerId,
+                    salesPersonId: salesPersonId || null,
+                    executiveId: executiveId || null,
+                    scheduledByUserId: req.user.id,
                     createdByUserId: req.user.id,
                     updatedByUserId: req.user.id
                 }, 'created');
@@ -92,8 +99,12 @@ const Create = async (req, res) => {
 const GetAllMeetingSchedules = async (req, res) => {
     try {
         const meetings = await MeetingScheduleModel.find({ published: true })
-            .sort({ createdAt: -1 })
+            .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
             .populate('status', 'name statusCode description')
+            .populate('salesPersonId', 'firstName lastName email phoneNumber')
+            .populate('executiveId', 'firstName lastName email phoneNumber')
+            .populate('customerId', 'firstName lastName email phoneNumber')
+            .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
 
         // Get status counts
         const statusCounts = await MeetingScheduleModel.aggregate([
@@ -157,12 +168,19 @@ const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Find meetings where customerId matches the requested user ID
+        // Find meetings where user is customer, sales person, or executive
         const meetings = await MeetingScheduleModel.find({
             published: true,
-            customerId: id
+            $or: [
+                { customerId: id },
+                { salesPersonId: id },
+                { executiveId: id }
+            ]
         })
-        .sort({ createdAt: -1 });
+        .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
+        .populate('status', 'name statusCode description')
+        .populate('salesPersonId', 'firstName lastName email phoneNumber')
+        .populate('executiveId', 'firstName lastName email phoneNumber');
 
         
         // Get status counts for user's meetings
@@ -170,7 +188,11 @@ const GetMyMeetings = async (req, res) => {
             { 
                 $match: { 
                     published: true,
-                    customerId: id
+                    $or: [
+                        { customerId: id },
+                        { salesPersonId: id },
+                        { executiveId: id }
+                    ]
                 } 
             },
             {
@@ -241,10 +263,14 @@ const GetMyTodaysMeetings = async (req, res) => {
         
         console.log('Date range for today:', { startOfDay, endOfDay });
         
-        // Find meetings where customerId matches the requested user ID and meeting date is today
+        // Find meetings where user is customer, sales person, or executive and meeting date is today
         const meetings = await MeetingScheduleModel.find({
             published: true,
-            customerId: id,
+            $or: [
+                { customerId: id },
+                { salesPersonId: id },
+                { executiveId: id }
+            ],
             meetingDate: {
                 $gte: startOfDay,
                 $lt: endOfDay
@@ -252,6 +278,8 @@ const GetMyTodaysMeetings = async (req, res) => {
         })
         .populate('status', 'name statusCode description')
         .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
+        .populate('salesPersonId', 'firstName lastName email phoneNumber')
+        .populate('executiveId', 'firstName lastName email phoneNumber')
         .populate('propertyId', 'name price propertyAddress description')
         .sort({ startTime: 1 });
 
@@ -303,10 +331,14 @@ const GetMyTomorrowsMeetings = async (req, res) => {
         
         console.log('Date range for tomorrow:', { startOfDay, endOfDay });
         
-        // Find meetings where customerId matches the requested user ID and meeting date is tomorrow
+        // Find meetings where user is customer, sales person, or executive and meeting date is tomorrow
         const meetings = await MeetingScheduleModel.find({
             published: true,
-            customerId: id,
+            $or: [
+                { customerId: id },
+                { salesPersonId: id },
+                { executiveId: id }
+            ],
             meetingDate: {
                 $gte: startOfDay,
                 $lt: endOfDay
@@ -314,6 +346,8 @@ const GetMyTomorrowsMeetings = async (req, res) => {
         })
         .populate('status', 'name statusCode description')
         .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
+        .populate('salesPersonId', 'firstName lastName email phoneNumber')
+        .populate('executiveId', 'firstName lastName email phoneNumber')
         .populate('propertyId', 'name price propertyAddress description')
         .sort({ startTime: 1 });
 
@@ -374,8 +408,11 @@ const GetMeetingScheduleById = async (req, res) => {
     try {
         var { id } = req.params
         const meeting = await MeetingScheduleModel.find({scheduledByUserId: id})
-            .sort({ createdAt: -1 })
+            .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
             .populate('status', 'name statusCode description')
+            .populate('salesPersonId', 'firstName lastName email phoneNumber')
+            .populate('executiveId', 'firstName lastName email phoneNumber')
+            .populate('customerId', 'firstName lastName email phoneNumber')
 
         if (meeting == null) {
             return res.status(404).json({
@@ -403,6 +440,8 @@ const GetMeetingById = async (req, res) => {
             .populate('status', 'name statusCode description')
             .populate('scheduledByUserId', 'firstName lastName email phoneNumber')
             .populate('customerId', 'firstName lastName email phoneNumber')
+            .populate('salesPersonId', 'firstName lastName email phoneNumber')
+            .populate('executiveId', 'firstName lastName email phoneNumber')
             .populate('propertyId', 'name price propertyAddress description');
 
         if (!meeting) {
@@ -436,7 +475,9 @@ const Edit = async (req, res) => {
             status, 
             customerId, 
             propertyId, 
-            notes 
+            notes,
+            salesPersonId,
+            executiveId
         } = req.body;
 
         if (!title || !meetingDate || !startTime || !status || !customerId) {
@@ -464,6 +505,8 @@ const Edit = async (req, res) => {
             status,
             scheduledByUserId: meeting.scheduledByUserId,
             customerId,
+            salesPersonId: salesPersonId !== undefined ? salesPersonId : meeting.salesPersonId,
+            executiveId: executiveId !== undefined ? executiveId : meeting.executiveId,
             propertyId: propertyId || null,
             notes: notes || "",
             createdByUserId: meeting.createdByUserId,
@@ -481,11 +524,16 @@ const Edit = async (req, res) => {
         // Create notification for the customer about meeting update
         await NotificationService.createMeetingNotification({
             _id: result._id,
-            userId: customerId,
             title: title,
             date: meetingDate,
             time: `${startTime}${endTime ? ` - ${endTime}` : ''}`,
-            description: description || ""
+            description: description || "",
+            customerId: customerId,
+            salesPersonId: result.salesPersonId || null,
+            executiveId: result.executiveId || null,
+            scheduledByUserId: result.scheduledByUserId || req.user.id,
+            createdByUserId: result.createdByUserId || req.user.id,
+            updatedByUserId: req.user.id
         }, 'updated');
         
         return res.status(201).json({
@@ -524,12 +572,15 @@ const DeleteById = async (req, res) => {
         // Create notification for the customer about meeting cancellation
         await NotificationService.createMeetingNotification({
             _id: result._id,
-            userId: result.customerId,
             title: result.title,
             date: result.meetingDate,
             time: `${result.startTime}${result.endTime ? ` - ${result.endTime}` : ''}`,
             description: result.description || "",
-            createdByUserId: result.createdByUserId,
+            customerId: result.customerId,
+            salesPersonId: result.salesPersonId || null,
+            executiveId: result.executiveId || null,
+            scheduledByUserId: result.scheduledByUserId || req.user.id,
+            createdByUserId: result.createdByUserId || req.user.id,
             updatedByUserId: req.user.id
         }, 'deleted');
         
@@ -547,6 +598,90 @@ const DeleteById = async (req, res) => {
     }
 }
 
+// Mark meeting as done by sales person
+const MarkMeetingDoneBySales = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const meeting = await MeetingScheduleModel.findById(id);
+        if (!meeting) {
+            return res.status(404).json({
+                message: 'Meeting schedule not found'
+            });
+        }
+
+        // Verify user is the assigned sales person
+        if (meeting.salesPersonId && meeting.salesPersonId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                message: 'You are not authorized to mark this meeting as done'
+            });
+        }
+
+        meeting.isCompletedBySales = true;
+        meeting.updatedByUserId = userId;
+        
+        const result = await MeetingScheduleModel.findByIdAndUpdate(id, meeting);
+        if (!result) {
+            return res.status(404).json({
+                message: 'Meeting schedule not found'
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Meeting marked as done by sales person',
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+}
+
+// Mark meeting as done by executive
+const MarkMeetingDoneByExecutive = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const meeting = await MeetingScheduleModel.findById(id);
+        if (!meeting) {
+            return res.status(404).json({
+                message: 'Meeting schedule not found'
+            });
+        }
+
+        // Verify user is the assigned executive
+        if (meeting.executiveId && meeting.executiveId.toString() !== userId.toString()) {
+            return res.status(403).json({
+                message: 'You are not authorized to mark this meeting as done'
+            });
+        }
+
+        meeting.isCompletedByExecutive = true;
+        meeting.updatedByUserId = userId;
+        
+        const result = await MeetingScheduleModel.findByIdAndUpdate(id, meeting);
+        if (!result) {
+            return res.status(404).json({
+                message: 'Meeting schedule not found'
+            });
+        }
+
+        return res.status(200).json({
+            message: 'Meeting marked as done by executive',
+            data: result
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+}
+
 export {
     Create,
     GetAllMeetingSchedules,
@@ -557,5 +692,7 @@ export {
     GetMeetingScheduleById,
     GetMeetingById,
     Edit,
-    DeleteById
+    DeleteById,
+    MarkMeetingDoneBySales,
+    MarkMeetingDoneByExecutive
 } 

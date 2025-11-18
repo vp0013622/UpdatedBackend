@@ -3,45 +3,160 @@ import { UsersModel } from '../Models/UsersModel.js';
 import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 
 class NotificationService {
-  // Create meeting schedule notification
+  // Create meeting schedule notification (filtered by role)
   static async createMeetingNotification(meetingData, action = 'created') {
     try {
-      const { userId, title, date, time, description } = meetingData;
+      const { RolesModel } = await import('../Models/RolesModel.js');
+      const { _id, title, date, time, description, customerId, salesPersonId, executiveId, scheduledByUserId } = meetingData;
       
-      // Get user details
-      const user = await UsersModel.findById(userId);
-      if (!user) {
-        return;
-      }
-
       const actionText = action === 'created' ? 'scheduled' : 
                         action === 'updated' ? 'updated' : 
                         action === 'deleted' ? 'cancelled' : 'modified';
 
-      const notification = new NotificationModel({
-        recipientIds: [userId],
-        type: 'meeting_schedule',
-        title: `Meeting ${actionText}`,
-        message: `Your meeting "${title}" has been ${actionText} for ${date} at ${time}.`,
-        relatedId: meetingData._id,
-        relatedModel: 'MeetingScheduleModel',
-        data: {
-          meetingTitle: title,
-          date: date,
-          time: time,
-          description: description,
-          action: action
-        },
-        priority: action === 'deleted' ? 'high' : 'medium',
-        createdByUserId: meetingData.createdByUserId || meetingData.scheduledByUserId || meetingData._id,
-        updatedByUserId: meetingData.updatedByUserId || meetingData.scheduledByUserId || meetingData._id,
-        published: true
+      const notifications = [];
+
+      // Get all admin users (they get all meeting notifications)
+      const adminRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^admin$/i } }
+        ]
+      });
+      
+      if (adminRole) {
+        const adminUsers = await UsersModel.find({ 
+          role: adminRole._id,
+          published: true 
+        });
+        
+        for (const admin of adminUsers) {
+          const notification = new NotificationModel({
+            recipientIds: [admin._id],
+            type: 'meeting_schedule',
+            title: `Meeting ${actionText}`,
+            message: `A meeting "${title}" has been ${actionText} for ${date} at ${time}.`,
+            relatedId: _id,
+            relatedModel: 'MeetingScheduleModel',
+            data: {
+              meetingTitle: title,
+              date: date,
+              time: time,
+              description: description,
+              action: action
+            },
+            priority: action === 'deleted' ? 'high' : 'medium',
+            createdByUserId: meetingData.createdByUserId || scheduledByUserId || admin._id,
+            updatedByUserId: meetingData.updatedByUserId || scheduledByUserId || admin._id,
+            published: true
+          });
+          await notification.save();
+          notifications.push(notification);
+        }
+      }
+
+      // Get executive and sales roles
+      const executiveRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^executive$/i } }
+        ]
+      });
+      
+      const salesRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^sales$/i } }
+        ]
       });
 
-      await notification.save();
-      return notification;
+      // Notify customer
+      if (customerId) {
+        const customer = await UsersModel.findById(customerId);
+        if (customer) {
+          const notification = new NotificationModel({
+            recipientIds: [customerId],
+            type: 'meeting_schedule',
+            title: `Meeting ${actionText}`,
+            message: `Your meeting "${title}" has been ${actionText} for ${date} at ${time}.`,
+            relatedId: _id,
+            relatedModel: 'MeetingScheduleModel',
+            data: {
+              meetingTitle: title,
+              date: date,
+              time: time,
+              description: description,
+              action: action
+            },
+            priority: action === 'deleted' ? 'high' : 'medium',
+            createdByUserId: meetingData.createdByUserId || scheduledByUserId || customerId,
+            updatedByUserId: meetingData.updatedByUserId || scheduledByUserId || customerId,
+            published: true
+          });
+          await notification.save();
+          notifications.push(notification);
+        }
+      }
+
+      // Notify assigned sales person (if exists and is executive/sales role)
+      if (salesPersonId) {
+        const salesPerson = await UsersModel.findById(salesPersonId);
+        if (salesPerson && (salesPerson.role?.toString() === executiveRole?._id?.toString() || salesPerson.role?.toString() === salesRole?._id?.toString())) {
+          const notification = new NotificationModel({
+            recipientIds: [salesPersonId],
+            type: 'meeting_schedule',
+            title: `Meeting ${actionText}`,
+            message: `A meeting "${title}" has been ${actionText} for ${date} at ${time}.`,
+            relatedId: _id,
+            relatedModel: 'MeetingScheduleModel',
+            data: {
+              meetingTitle: title,
+              date: date,
+              time: time,
+              description: description,
+              action: action
+            },
+            priority: action === 'deleted' ? 'high' : 'medium',
+            createdByUserId: meetingData.createdByUserId || scheduledByUserId || salesPersonId,
+            updatedByUserId: meetingData.updatedByUserId || scheduledByUserId || salesPersonId,
+            published: true
+          });
+          await notification.save();
+          notifications.push(notification);
+        }
+      }
+
+      // Notify assigned executive (if exists and is executive/sales role)
+      if (executiveId) {
+        const executive = await UsersModel.findById(executiveId);
+        if (executive && (executive.role?.toString() === executiveRole?._id?.toString() || executive.role?.toString() === salesRole?._id?.toString())) {
+          const notification = new NotificationModel({
+            recipientIds: [executiveId],
+            type: 'meeting_schedule',
+            title: `Meeting ${actionText}`,
+            message: `A meeting "${title}" has been ${actionText} for ${date} at ${time}.`,
+            relatedId: _id,
+            relatedModel: 'MeetingScheduleModel',
+            data: {
+              meetingTitle: title,
+              date: date,
+              time: time,
+              description: description,
+              action: action
+            },
+            priority: action === 'deleted' ? 'high' : 'medium',
+            createdByUserId: meetingData.createdByUserId || scheduledByUserId || executiveId,
+            updatedByUserId: meetingData.updatedByUserId || scheduledByUserId || executiveId,
+            published: true
+          });
+          await notification.save();
+          notifications.push(notification);
+        }
+      }
+
+      return notifications.length === 1 ? notifications[0] : notifications;
     } catch (error) {
-      throw error; // Re-throw to see the error in the calling function
+      console.error('Error creating meeting notification:', error);
+      throw error;
     }
   }
 
@@ -77,7 +192,79 @@ class NotificationService {
       await notification.save();
       return notification;
     } catch (error) {
-      // Error creating lead assignment notification
+      console.error('Error creating lead assignment notification:', error);
+    }
+  }
+
+  // Create lead created notification for all roles except user
+  static async createLeadCreatedNotification(leadData) {
+    try {
+      const { RolesModel } = await import('../Models/RolesModel.js');
+      
+      // Get USER role to exclude it
+      const userRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^user$/i } }
+        ]
+      });
+
+      // Get all roles except USER
+      const roleQuery = { published: true };
+      if (userRole) {
+        roleQuery._id = { $ne: userRole._id };
+      }
+
+      const roles = await RolesModel.find(roleQuery);
+
+      if (roles.length === 0) {
+        return [];
+      }
+
+      // Get all users with these roles (except USER role)
+      const roleIds = roles.map(role => role._id);
+      const users = await UsersModel.find({ 
+        role: { $in: roleIds },
+        published: true
+      });
+
+      if (users.length === 0) {
+        return [];
+      }
+
+      const notifications = [];
+      const customerName = leadData.userId?.firstName && leadData.userId?.lastName 
+        ? `${leadData.userId.firstName} ${leadData.userId.lastName}`
+        : leadData.leadAltEmail || 'New Customer';
+      const propertyName = leadData.leadInterestedPropertyId?.name || 'Property Inquiry';
+
+      for (const user of users) {
+        const notification = new NotificationModel({
+          recipientIds: [user._id],
+          type: 'lead_created',
+          title: 'New Lead Created',
+          message: `A new lead has been created for ${customerName} regarding ${propertyName}.`,
+          relatedId: leadData._id || leadData.leadId,
+          relatedModel: 'LeadsModel',
+          data: {
+            customerName: customerName,
+            propertyName: propertyName,
+            leadId: leadData._id || leadData.leadId
+          },
+          priority: 'high',
+          createdByUserId: leadData.createdByUserId || user._id,
+          updatedByUserId: leadData.updatedByUserId || user._id,
+          published: true
+        });
+
+        await notification.save();
+        notifications.push(notification);
+      }
+
+      return notifications;
+    } catch (error) {
+      console.error('Error creating lead created notification:', error);
+      return [];
     }
   }
 
@@ -221,9 +408,10 @@ class NotificationService {
     }
   }
 
-  // Create meeting reminder notifications for today's meetings
+  // Create meeting reminder notifications for today's meetings (filtered by role)
   static async createMeetingReminderNotifications() {
     try {
+      const { RolesModel } = await import('../Models/RolesModel.js');
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Start of today
       
@@ -237,32 +425,74 @@ class NotificationService {
           $lt: tomorrow
         },
         published: true
-      }).populate('scheduledByUserId', '_id firstName lastName email')
-        .populate('customerId', '_id firstName lastName email');
-
-
+      }).populate('scheduledByUserId', '_id firstName lastName email role')
+        .populate('customerId', '_id firstName lastName email')
+        .populate('salesPersonId', '_id firstName lastName email role')
+        .populate('executiveId', '_id firstName lastName email role');
 
       const createdNotifications = [];
+
+      // Get roles
+      const adminRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^admin$/i } }
+        ]
+      });
+      
+      const executiveRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^executive$/i } }
+        ]
+      });
+      
+      const salesRole = await RolesModel.findOne({ 
+        published: true,
+        $or: [
+          { name: { $regex: /^sales$/i } }
+        ]
+      });
 
       for (const meeting of todaysMeetings) {
         const recipients = [];
 
-        // Add admin users
-        const adminUsers = await UsersModel.find({ role: 'admin' });
-        adminUsers.forEach(admin => {
-          if (!recipients.includes(admin._id.toString())) {
-            recipients.push(admin._id.toString());
-          }
-        });
-
-        // Add scheduled by user
-        if (meeting.scheduledByUserId && !recipients.includes(meeting.scheduledByUserId._id.toString())) {
-          recipients.push(meeting.scheduledByUserId._id.toString());
+        // Add all admin users (they get all meeting reminders)
+        if (adminRole) {
+          const adminUsers = await UsersModel.find({ 
+            role: adminRole._id,
+            published: true 
+          });
+          adminUsers.forEach(admin => {
+            if (!recipients.includes(admin._id.toString())) {
+              recipients.push(admin._id.toString());
+            }
+          });
         }
 
         // Add customer
         if (meeting.customerId && !recipients.includes(meeting.customerId._id.toString())) {
           recipients.push(meeting.customerId._id.toString());
+        }
+
+        // Add assigned sales person (if executive/sales role)
+        if (meeting.salesPersonId) {
+          const salesPerson = await UsersModel.findById(meeting.salesPersonId._id || meeting.salesPersonId);
+          if (salesPerson && (salesPerson.role?.toString() === executiveRole?._id?.toString() || salesPerson.role?.toString() === salesRole?._id?.toString())) {
+            if (!recipients.includes(salesPerson._id.toString())) {
+              recipients.push(salesPerson._id.toString());
+            }
+          }
+        }
+
+        // Add assigned executive (if executive/sales role)
+        if (meeting.executiveId) {
+          const executive = await UsersModel.findById(meeting.executiveId._id || meeting.executiveId);
+          if (executive && (executive.role?.toString() === executiveRole?._id?.toString() || executive.role?.toString() === salesRole?._id?.toString())) {
+            if (!recipients.includes(executive._id.toString())) {
+              recipients.push(executive._id.toString());
+            }
+          }
         }
 
         // Create reminder notification for each recipient
@@ -276,6 +506,18 @@ class NotificationService {
           });
 
           if (!existingReminder) {
+            // Get system user for createdByUserId/updatedByUserId
+            let systemUser = null;
+            if (adminRole) {
+              systemUser = await UsersModel.findOne({ 
+                role: adminRole._id,
+                published: true 
+              }).sort({ createdAt: 1 });
+            }
+            if (!systemUser) {
+              systemUser = await UsersModel.findOne({ published: true }).sort({ createdAt: 1 });
+            }
+
             const notification = new NotificationModel({
               recipientIds: [recipientId],
               type: 'meeting_reminder',
@@ -293,8 +535,8 @@ class NotificationService {
                 action: 'reminder'
               },
               priority: 'high',
-              createdByUserId: 'system',
-              updatedByUserId: 'system',
+              createdByUserId: systemUser?._id || recipientId,
+              updatedByUserId: systemUser?._id || recipientId,
               published: true
             });
 
@@ -306,6 +548,7 @@ class NotificationService {
 
       return createdNotifications;
     } catch (error) {
+      console.error('Error creating meeting reminder notifications:', error);
       throw error;
     }
   }

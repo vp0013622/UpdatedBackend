@@ -15,7 +15,7 @@ export const NotificationSchema = mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['meeting_schedule', 'meeting_reminder', 'lead_assignment', 'contact_us', 'general'],
+            enum: ['meeting_schedule', 'meeting_reminder', 'lead_assignment', 'lead_created', 'inquiry_created', 'contact_us', 'message', 'general'],
             required: true
         },
         title: {
@@ -34,7 +34,7 @@ export const NotificationSchema = mongoose.Schema(
         },
         relatedModel: {
             type: String,
-            enum: ['MeetingScheduleModel', 'LeadsModel', 'ContactUsModel', null],
+            enum: ['MeetingScheduleModel', 'LeadsModel', 'ContactUsModel', 'InquiriesModel', null],
             default: null
         },
         data: {

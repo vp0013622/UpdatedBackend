@@ -9,7 +9,7 @@ const InquiriesRouter = express.Router()
 InquiriesRouter.post('/create', Create)
 
 // Get all inquiries (admin, executive, sales)
-InquiriesRouter.get('/', AuthMiddelware, RoleAuthMiddleware("admin", "executive", "sales"), GetAll)
+InquiriesRouter.get('/', AuthMiddelware, RoleAuthMiddleware("admin", "executive", "sales", "user"), GetAll)
 
 // Get inquiry by ID (admin, executive, sales)
 InquiriesRouter.get('/:id', AuthMiddelware, RoleAuthMiddleware("admin", "executive", "sales"), GetById)

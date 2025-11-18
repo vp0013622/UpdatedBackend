@@ -55,13 +55,13 @@ export const CreateNotification = async (req, res) => {
   }
 };
 
-// Get notifications for a user
+// Get notifications for current user
 export const GetUserNotifications = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { page = 1, limit = 20, unreadOnly = false } = req.query;
+    const userId = req.user.id; // Use current authenticated user
+    const { page = 1, limit = 50, unreadOnly = false } = req.query;
 
-    const query = { recipientIds: userId };
+    const query = { recipientIds: userId, published: true };
     if (unreadOnly === 'true') {
       query.isRead = false;
     }
@@ -71,7 +71,7 @@ export const GetUserNotifications = async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .populate('recipientIds', 'firstName lastName email')
-      .populate('relatedId', 'name email')
+      .populate('relatedId')
       .populate('createdByUserId', 'firstName lastName')
       .populate('updatedByUserId', 'firstName lastName')
       .exec();
@@ -83,10 +83,10 @@ export const GetUserNotifications = async (req, res) => {
       message: 'Notifications retrieved successfully',
       data: notifications,
       pagination: {
-        currentPage: page,
+        currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
         totalItems: total,
-        itemsPerPage: limit
+        itemsPerPage: parseInt(limit)
       }
     });
   } catch (error) {
@@ -162,13 +162,13 @@ export const MarkNotificationAsUnread = async (req, res) => {
   }
 };
 
-// Mark all notifications as read for a user
+// Mark all notifications as read for current user
 export const MarkAllNotificationsAsRead = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id; // Use current authenticated user
 
     const result = await NotificationModel.updateMany(
-      { recipientId: userId, isRead: false },
+      { recipientIds: userId, isRead: false },
       { isRead: true }
     );
 
@@ -213,14 +213,15 @@ export const DeleteNotification = async (req, res) => {
   }
 };
 
-// Get unread count for a user
+// Get unread count for current user
 export const GetUnreadCount = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id; // Use current authenticated user
 
     const count = await NotificationModel.countDocuments({
       recipientIds: userId,
-      isRead: false
+      isRead: false,
+      published: true
     });
 
     res.status(200).json({

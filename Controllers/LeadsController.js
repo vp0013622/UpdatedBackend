@@ -1,5 +1,10 @@
 import { LeadsModel } from "../Models/LeadsModel.js"
 import { UsersModel } from "../Models/UsersModel.js"
+import { LeadStatusModel } from "../Models/LeadStatusModel.js"
+import { FollowUpStatusModel } from "../Models/FollowUpStatusModel.js"
+import { RolesModel } from "../Models/RolesModel.js"
+import bcrypt from "bcryptjs"
+import { SALT } from "../config.js"
 import NotificationService from "../Services/NotificationService.js"
 
 const Create = async (req, res) => {
@@ -59,25 +64,40 @@ const Create = async (req, res) => {
 
         const lead = await LeadsModel.create(cleanedData)
         
+        // Populate lead for notifications
+        const populatedLead = await LeadsModel.findById(lead._id)
+            .populate('userId', 'firstName lastName email')
+            .populate('leadInterestedPropertyId', 'name propertyName')
+        
+        // Create notification for all roles except user when lead is created
+        try {
+            await NotificationService.createLeadCreatedNotification({
+                _id: lead._id,
+                userId: populatedLead.userId,
+                leadInterestedPropertyId: populatedLead.leadInterestedPropertyId,
+                createdByUserId: req.user.id,
+                updatedByUserId: req.user.id
+            });
+        } catch (notificationError) {
+            console.error('Error creating lead created notification:', notificationError);
+            // Don't fail the lead creation if notification fails
+        }
+        
         // Create notification if lead is assigned to someone
         if (cleanedData.assignedToUserId) {
             try {
-                // Get lead details for notification
-                const populatedLead = await LeadsModel.findById(lead._id)
-                    .populate('userId', 'firstName lastName')
-                    .populate('leadInterestedPropertyId', 'propertyName')
-                
                 if (populatedLead) {
                     await NotificationService.createLeadAssignmentNotification({
                         assignedTo: cleanedData.assignedToUserId,
-                        customerName: `${populatedLead.userId.firstName} ${populatedLead.userId.lastName}`,
-                        propertyName: populatedLead.leadInterestedPropertyId?.propertyName || 'Property',
+                        customerName: populatedLead.userId ? `${populatedLead.userId.firstName} ${populatedLead.userId.lastName}` : 'Customer',
+                        propertyName: populatedLead.leadInterestedPropertyId?.name || populatedLead.leadInterestedPropertyId?.propertyName || 'Property',
                         leadId: lead._id,
                         createdByUserId: req.user.id,
                         updatedByUserId: req.user.id
                     });
                 }
             } catch (notificationError) {
+                console.error('Error creating lead assignment notification:', notificationError);
                 // Don't fail the lead creation if notification fails
             }
         }
@@ -99,6 +119,7 @@ const GetAllLeads = async (req, res) => {
         const leads = await LeadsModel.find({ published: true })
             .sort({ createdAt: -1 })
             .populate('userId')
+            .populate('leadInterestedPropertyId') // Include property info for contact us leads
             .populate('leadStatus')
             .populate('referanceFrom')
             .populate('followUpStatus')
@@ -124,6 +145,7 @@ const GetAllNotPublishedLeads = async (req, res) => {
         const leads = await LeadsModel.find({ published: false })
             .sort({ createdAt: -1 })
             .populate('userId')
+            .populate('leadInterestedPropertyId') // Include property info
             .populate('leadStatus')
             .populate('referanceFrom')
             .populate('followUpStatus')
@@ -179,6 +201,7 @@ const GetAllLeadsWithParams = async (req, res) => {
         const leads = await LeadsModel.find(filter)
             .sort({ createdAt: -1 })
             .populate('userId')
+            .populate('leadInterestedPropertyId') // Include property info
             .populate('leadStatus')
             .populate('referanceFrom')
             .populate('followUpStatus')
@@ -204,6 +227,7 @@ const GetLeadById = async (req, res) => {
         const { id } = req.params
         const lead = await LeadsModel.findById(id)
             .populate('userId')
+            .populate('leadInterestedPropertyId') // Include property info
             .populate('leadStatus')
             .populate('referanceFrom')
             .populate('followUpStatus')
@@ -241,27 +265,48 @@ const Edit = async (req, res) => {
             })
         }
 
-        // Clean up empty strings for optional fields
+        // Helper function to handle ObjectId fields
+        const handleObjectIdField = (newValue, existingValue) => {
+            if (newValue === undefined) return existingValue;
+            if (newValue === null || newValue === '') return null;
+            if (typeof newValue === 'string' && newValue.trim() === '') return null;
+            return newValue;
+        };
+
+        // Helper function to handle string fields
+        const handleStringField = (newValue, existingValue) => {
+            if (newValue === undefined) return existingValue;
+            if (newValue === null || newValue === '') return null;
+            if (typeof newValue === 'string' && newValue.trim() === '') return null;
+            return typeof newValue === 'string' ? newValue.trim() : newValue;
+        };
+
+        // Clean up and prepare data for update
         const cleanedData = {
-            ...req.body,
-            // Convert empty strings to null for ObjectId fields
-            referredByUserId: req.body.referredByUserId && req.body.referredByUserId.trim() !== "" ? req.body.referredByUserId : null,
-            assignedByUserId: req.body.assignedByUserId && req.body.assignedByUserId.trim() !== "" ? req.body.assignedByUserId : null,
-            assignedToUserId: req.body.assignedToUserId && req.body.assignedToUserId.trim() !== "" ? req.body.assignedToUserId : null,
-            referanceFrom: req.body.referanceFrom && req.body.referanceFrom.trim() !== "" ? req.body.referanceFrom : null,
-            // Convert empty strings to null for string fields
-            referredByUserFirstName: req.body.referredByUserFirstName && req.body.referredByUserFirstName.trim() !== "" ? req.body.referredByUserFirstName.trim() : null,
-            referredByUserLastName: req.body.referredByUserLastName && req.body.referredByUserLastName.trim() !== "" ? req.body.referredByUserLastName.trim() : null,
-            referredByUserEmail: req.body.referredByUserEmail && req.body.referredByUserEmail.trim() !== "" ? req.body.referredByUserEmail.trim() : null,
-            referredByUserPhoneNumber: req.body.referredByUserPhoneNumber && req.body.referredByUserPhoneNumber.trim() !== "" ? req.body.referredByUserPhoneNumber.trim() : null,
-            referredByUserDesignation: req.body.referredByUserDesignation && req.body.referredByUserDesignation.trim() !== "" ? req.body.referredByUserDesignation.trim() : null,
-            leadAltEmail: req.body.leadAltEmail && req.body.leadAltEmail.trim() !== "" ? req.body.leadAltEmail.trim() : null,
-            leadAltPhoneNumber: req.body.leadAltPhoneNumber && req.body.leadAltPhoneNumber.trim() !== "" ? req.body.leadAltPhoneNumber.trim() : null,
-            leadLandLineNumber: req.body.leadLandLineNumber && req.body.leadLandLineNumber.trim() !== "" ? req.body.leadLandLineNumber.trim() : null,
-            leadWebsite: req.body.leadWebsite && req.body.leadWebsite.trim() !== "" ? req.body.leadWebsite.trim() : null,
-            note: req.body.note && req.body.note.trim() !== "" ? req.body.note.trim() : null,
+            // ObjectId fields - allow null for optional fields like leadInterestedPropertyId
+            leadInterestedPropertyId: handleObjectIdField(req.body.leadInterestedPropertyId, lead.leadInterestedPropertyId),
+            leadStatus: handleObjectIdField(req.body.leadStatus, lead.leadStatus),
+            followUpStatus: handleObjectIdField(req.body.followUpStatus, lead.followUpStatus),
+            referredByUserId: handleObjectIdField(req.body.referredByUserId, lead.referredByUserId),
+            assignedByUserId: handleObjectIdField(req.body.assignedByUserId, lead.assignedByUserId),
+            assignedToUserId: handleObjectIdField(req.body.assignedToUserId, lead.assignedToUserId),
+            referanceFrom: handleObjectIdField(req.body.referanceFrom, lead.referanceFrom),
+            // String fields
+            leadDesignation: handleStringField(req.body.leadDesignation, lead.leadDesignation),
+            referredByUserFirstName: handleStringField(req.body.referredByUserFirstName, lead.referredByUserFirstName),
+            referredByUserLastName: handleStringField(req.body.referredByUserLastName, lead.referredByUserLastName),
+            referredByUserEmail: handleStringField(req.body.referredByUserEmail, lead.referredByUserEmail),
+            referredByUserPhoneNumber: handleStringField(req.body.referredByUserPhoneNumber, lead.referredByUserPhoneNumber),
+            referredByUserDesignation: handleStringField(req.body.referredByUserDesignation, lead.referredByUserDesignation),
+            leadAltEmail: handleStringField(req.body.leadAltEmail, lead.leadAltEmail),
+            leadAltPhoneNumber: handleStringField(req.body.leadAltPhoneNumber, lead.leadAltPhoneNumber),
+            leadLandLineNumber: handleStringField(req.body.leadLandLineNumber, lead.leadLandLineNumber),
+            leadWebsite: handleStringField(req.body.leadWebsite, lead.leadWebsite),
+            note: handleStringField(req.body.note, lead.note),
+            // System fields
             createdByUserId: lead.createdByUserId,
-            updatedByUserId: req.user.id
+            updatedByUserId: req.user.id,
+            published: req.body.published !== undefined ? req.body.published : lead.published
         }
 
         const result = await LeadsModel.findByIdAndUpdate(id, cleanedData)
@@ -324,6 +369,7 @@ const GetAssignedLeadsForCurrentUser = async (req, res) => {
             published: true 
         })
             .populate('userId')
+            .populate('leadInterestedPropertyId') // Include property info
             .populate('leadStatus')
             .populate('referanceFrom')
             .populate('followUpStatus')
@@ -344,6 +390,210 @@ const GetAssignedLeadsForCurrentUser = async (req, res) => {
     }
 }
 
+// Create lead from contact us form (public endpoint)
+const CreateFromContactUs = async (req, res) => {
+    try {
+        console.log('CreateFromContactUs called with:', req.body);
+        const { name, email, phone, description } = req.body;
+
+        // Validate required fields
+        if (!name || !email || !phone) {
+            console.log('Validation failed - missing required fields');
+            return res.status(400).json({
+                message: 'Name, email, and phone are required',
+                data: req.body
+            });
+        }
+
+        // Check if user exists by email, if not create one
+        let user = await UsersModel.findOne({ email: email.toLowerCase().trim() });
+        
+        if (!user) {
+            // Get the 'user' role (find role with name 'user' or 'USER')
+            let userRole = await RolesModel.findOne({ 
+                $or: [
+                    { name: { $regex: /^user$/i } },
+                    { roleName: { $regex: /^user$/i } }
+                ],
+                published: true 
+            });
+            
+            if (!userRole) {
+                // If no user role exists, get the first available role
+                userRole = await RolesModel.findOne({ published: true }).sort({ createdAt: 1 });
+            }
+
+            if (!userRole) {
+                return res.status(500).json({
+                    message: 'No user role found. Please contact administrator.',
+                    error: 'Role configuration missing'
+                });
+            }
+
+            // Create a new user from contact form data
+            // Split name into first and last name
+            const nameParts = name.trim().split(' ').filter(part => part.length > 0);
+            const firstName = nameParts[0] || name;
+            // If no last name provided, use a default value (required field)
+            const lastName = nameParts.slice(1).join(' ') || 'N/A';
+
+            // Generate a random password for contact form users (they can reset it later)
+            const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+            const hashedPassword = await bcrypt.hash(randomPassword, SALT);
+
+            // Get a system user for createdByUserId/updatedByUserId (admin user or first user)
+            // First try to find an admin role, then find a user with that role
+            const adminRole = await RolesModel.findOne({ 
+                $or: [
+                    { name: { $regex: /admin/i } },
+                    { roleName: { $regex: /admin/i } }
+                ],
+                published: true 
+            });
+            
+            let systemUser = null;
+            if (adminRole) {
+                systemUser = await UsersModel.findOne({ 
+                    role: adminRole._id,
+                    published: true 
+                }).sort({ createdAt: 1 });
+            }
+            
+            // If no admin user found, get the first available user
+            if (!systemUser) {
+                systemUser = await UsersModel.findOne({ published: true }).sort({ createdAt: 1 });
+            }
+
+            // If still no system user found, we cannot create a user (required fields)
+            if (!systemUser) {
+                return res.status(500).json({
+                    message: 'No system user found. Please contact administrator.',
+                    error: 'System user configuration missing'
+                });
+            }
+
+            user = await UsersModel.create({
+                firstName: firstName,
+                lastName: lastName,
+                email: email.toLowerCase().trim(),
+                phoneNumber: phone.trim(),
+                password: hashedPassword,
+                role: userRole._id,
+                published: true,
+                createdByUserId: systemUser._id,
+                updatedByUserId: systemUser._id
+            });
+        }
+
+        // Get default lead status (first available status or create a default)
+        let defaultLeadStatus = await LeadStatusModel.findOne({ published: true }).sort({ createdAt: 1 });
+        if (!defaultLeadStatus) {
+            // If no status exists, create a default "NEW" status
+            defaultLeadStatus = await LeadStatusModel.create({
+                name: 'NEW',
+                statusCode: 'NEW',
+                description: 'New lead from contact form',
+                published: true,
+                createdByUserId: null,
+                updatedByUserId: null
+            });
+        }
+
+        // Get default follow-up status (first available status or create a default)
+        let defaultFollowUpStatus = await FollowUpStatusModel.findOne({ published: true }).sort({ createdAt: 1 });
+        if (!defaultFollowUpStatus) {
+            // If no follow-up status exists, create a default "PENDING" status
+            defaultFollowUpStatus = await FollowUpStatusModel.create({
+                name: 'PENDING',
+                statusCode: 'PENDING',
+                description: 'Pending follow-up',
+                published: true,
+                createdByUserId: null,
+                updatedByUserId: null
+            });
+        }
+
+        // Get system user for lead creation (same logic as user creation)
+        const adminRoleForLead = await RolesModel.findOne({ 
+            $or: [
+                { name: { $regex: /admin/i } },
+                { roleName: { $regex: /admin/i } }
+            ],
+            published: true 
+        });
+        
+        let systemUserForLead = null;
+        if (adminRoleForLead) {
+            systemUserForLead = await UsersModel.findOne({ 
+                role: adminRoleForLead._id,
+                published: true 
+            }).sort({ createdAt: 1 });
+        }
+        
+        if (!systemUserForLead) {
+            systemUserForLead = await UsersModel.findOne({ published: true }).sort({ createdAt: 1 });
+        }
+
+        // If still no system user found, we cannot create a lead (required fields)
+        if (!systemUserForLead) {
+            return res.status(500).json({
+                message: 'No system user found for lead creation. Please contact administrator.',
+                error: 'System user configuration missing'
+            });
+        }
+
+        // Create lead from contact form data
+        const leadData = {
+            userId: user._id,
+            leadInterestedPropertyId: null, // Contact form doesn't specify property
+            leadStatus: defaultLeadStatus._id,
+            followUpStatus: defaultFollowUpStatus._id,
+            note: description || `Contact form submission from ${name}`,
+            leadAltEmail: email,
+            leadAltPhoneNumber: phone,
+            createdByUserId: systemUserForLead._id,
+            updatedByUserId: systemUserForLead._id,
+            published: true
+        };
+
+        const lead = await LeadsModel.create(leadData);
+        
+        // Populate lead for notifications
+        const populatedLead = await LeadsModel.findById(lead._id)
+            .populate('userId', 'firstName lastName email')
+            .populate('leadInterestedPropertyId', 'name propertyName')
+        
+        // Create notification for all roles except user when lead is created from contact form
+        try {
+            await NotificationService.createLeadCreatedNotification({
+                _id: lead._id,
+                userId: populatedLead.userId || { firstName: name.split(' ')[0], lastName: name.split(' ').slice(1).join(' ') || 'N/A', email: email },
+                leadInterestedPropertyId: populatedLead.leadInterestedPropertyId,
+                createdByUserId: systemUserForLead._id,
+                updatedByUserId: systemUserForLead._id,
+                leadAltEmail: email
+            });
+        } catch (notificationError) {
+            console.error('Error creating lead created notification from contact form:', notificationError);
+            // Don't fail the lead creation if notification fails
+        }
+        
+        console.log('Lead created successfully:', lead._id);
+
+        return res.status(200).json({
+            message: 'Lead created successfully from contact form',
+            data: lead
+        });
+    } catch (error) {
+        console.error('CreateFromContactUs error:', error);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+}
+
 export {
     Create,
     GetAllLeads,
@@ -352,5 +602,6 @@ export {
     GetLeadById,
     Edit,
     DeleteById,
-    GetAssignedLeadsForCurrentUser
+    GetAssignedLeadsForCurrentUser,
+    CreateFromContactUs
 }

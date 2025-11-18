@@ -15,6 +15,7 @@ import PropertyTypesRouter from './Routes/propertyTypesRoutes.js'
 import UserAddressRouter from './Routes/userAddressRoutes.js'
 import PropertyRouter from './Routes/propertyRoutes.js'
 import FavoritePropertyRouter from './Routes/favoritePropertyRoutes.js'
+import PropertyViewRouter from './Routes/propertyViewRoutes.js'
 import { RolesModel } from './Models/RolesModel.js'
 import { UsersModel } from './Models/UsersModel.js'
 import { DocumentTypesModel } from './Models/DocumentTypesModel.js'
@@ -24,6 +25,7 @@ import { fileURLToPath } from 'url';
 import UserProfilePictureRouter from './Routes/userProfilePictureRoutes.js'
 import fs from 'fs';
 import LeadsRouter from './Routes/leadsRoutes.js'
+import ContactLeadRouter from './Routes/contactLeadRoutes.js'
 import FollowUpStatusRouter from './Routes/followUpStatusRoutes.js'
 import LeadStatusRouter from './Routes/leadStatusRoutes.js'
 import ReferenceSourceRouter from './Routes/referenceSourceRoutes.js'
@@ -255,9 +257,13 @@ app.use('/api/useraddress',AuthMiddelware, UserAddressRouter)
 app.use('/api/propertytypes', PropertyTypesRouter) // Public access for GET /, protected routes have their own middleware
 app.use('/api/property', PropertyRouter) // Public access for GET / and GET /home, protected routes have their own middleware
 app.use('/api/favoriteproperty',AuthMiddelware, FavoritePropertyRouter)
+app.use('/api/property-view', PropertyViewRouter)
 app.use('/api/followupstatus',AuthMiddelware, FollowUpStatusRouter)
 app.use('/api/leadstatus',AuthMiddelware, LeadStatusRouter)
 app.use('/api/referancesource',AuthMiddelware, ReferenceSourceRouter)
+// Public route for contact us form (no authentication required)
+app.use('/api/leads', ContactLeadRouter)
+// Authenticated routes for leads
 app.use('/api/leads',AuthMiddelware, LeadsRouter)
 app.use('/api/documents',AuthMiddelware, DocumentRouter)
 app.use('/api/documenttypes',AuthMiddelware, DocumentTypesRouter)

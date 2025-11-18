@@ -44,10 +44,28 @@ export const MeetingScheduleSchema = mongoose.Schema(
             ref: 'UsersModel',
             required: true
         },
+        salesPersonId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'UsersModel',
+            required: false
+        },
+        executiveId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'UsersModel',
+            required: false
+        },
         propertyId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'PropertyModel',
             required: false
+        },
+        isCompletedBySales: {
+            type: Boolean,
+            default: false
+        },
+        isCompletedByExecutive: {
+            type: Boolean,
+            default: false
         },
         notes: {
             type: String,
