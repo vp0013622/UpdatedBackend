@@ -579,7 +579,7 @@ const CreateFromContactUs = async (req, res) => {
         }
         
         console.log('Lead created successfully:', lead._id);
-
+        
         return res.status(200).json({
             message: 'Lead created successfully from contact form',
             data: lead

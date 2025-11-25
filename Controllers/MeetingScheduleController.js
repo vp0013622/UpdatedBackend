@@ -289,7 +289,6 @@ const GetMyTodaysMeetings = async (req, res) => {
         const allUserMeetings = await MeetingScheduleModel.find({
             published: true,
             customerId: id
-        }).populate('status', 'name statusCode description');
         console.log('All meetings for user:', allUserMeetings.length, allUserMeetings);
         
         // Debug: Check meeting dates
@@ -302,7 +301,8 @@ const GetMyTodaysMeetings = async (req, res) => {
                 customerId: meeting.customerId
             });
         });
-
+        }).populate('status', 'name statusCode description');
+        
         return res.status(200).json({
             message: 'my today\'s meetings',
             count: meetings.length,

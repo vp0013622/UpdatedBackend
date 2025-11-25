@@ -62,6 +62,7 @@ const generateInstallmentSchedule = (totalAmount, downPayment, installmentCount,
  */
 const Create = async (req, res) => {
     try {
+           
         const {
             propertyId,
             customerId,
@@ -119,7 +120,7 @@ const Create = async (req, res) => {
         }
 
         // Check if property exists
-        const property = await PropertyModel.findById(propertyId);
+        const property = await PropertyModel.findById(propertyId).populate('propertyTypeId');
         if (!property) {
             return res.status(404).json({
                 message: 'Property not found',
@@ -127,8 +128,38 @@ const Create = async (req, res) => {
             });
         }
 
-        //check if the property is already sold
-        if (property.propertyStatus === "SOLD") {
+        // Check if property is building/apartment type
+        const propertyTypeName = property.propertyTypeId?.typeName?.toUpperCase() || '';
+        const buildingTypes = ['APARTMENT', 'BUILDING', 'FLAT', 'CONDOMINIUM', 'TOWER'];
+        const isBuildingType = buildingTypes.some(type => propertyTypeName.includes(type));
+
+        // For building/apartment types, check if the same flat is already booked
+        if (isBuildingType && flatNo) {
+            const query = {
+                propertyId: propertyId,
+                flatNo: flatNo,
+                published: true,
+                bookingStatus: { $in: ['PENDING', 'CONFIRMED', 'COMPLETED'] }
+            };
+            
+            // If floorNo is provided, also check for the same floor
+            if (floorNo) {
+                query.floorNo = floorNo;
+            }
+            
+            const existingBooking = await PurchaseBookingModel.findOne(query);
+            
+            if (existingBooking) {
+                const floorInfo = floorNo ? ` on Floor ${floorNo}` : '';
+                return res.status(400).json({
+                    message: `Flat ${flatNo}${floorInfo} is already ${existingBooking.bookingStatus.toLowerCase()} for this property. Please select a different flat.`,
+                    data: null
+                });
+            }
+        }
+
+        // For non-building types, check if the property is already sold
+        if (!isBuildingType && property.propertyStatus === "SOLD") {
             return res.status(400).json({
                 message: 'Property is already sold',
                 data: null
@@ -162,7 +193,7 @@ const Create = async (req, res) => {
         if (paymentTerms === "INSTALLMENTS" && installmentCount > 0) {
             installmentSchedule = generateInstallmentSchedule(totalPropertyValue, downPayment, installmentCount, assignedSalespersonId);
         }
-
+        
         const newPurchaseBooking = {
             bookingId,
             bookingStatus: "PENDING",
@@ -187,17 +218,17 @@ const Create = async (req, res) => {
             buyerAadharNo: buyerAadharNo || null,
             buyerPanNo: buyerPanNo || null,
             // Additional Property Details
-            flatNo: flatNo || null,
-            floorNo: floorNo || null,
-            balconies: balconies || null,
-            otherDetails: otherDetails || null,
-            towerWing: towerWing || null,
-            propertyType: propertyType || null,
-            propertyTypeOther: propertyTypeOther || null,
-            carpetArea: carpetArea || null,
-            facing: facing || null,
-            parkingNo: parkingNo || null,
-            specialFeatures: specialFeatures || null,
+            flatNo: (flatNo && typeof flatNo === 'string' && flatNo.trim()) ? flatNo.trim() : null,
+            floorNo: (floorNo !== undefined && floorNo !== null && floorNo !== '') ? (typeof floorNo === 'string' ? parseInt(floorNo) : floorNo) : null,
+            balconies: (balconies !== undefined && balconies !== null && balconies !== '') ? (typeof balconies === 'string' ? parseInt(balconies) : balconies) : null,
+            otherDetails: (otherDetails && typeof otherDetails === 'string' && otherDetails.trim()) ? otherDetails.trim() : null,
+            towerWing: (towerWing && typeof towerWing === 'string' && towerWing.trim()) ? towerWing.trim() : null,
+            propertyType: (propertyType && typeof propertyType === 'string' && propertyType.trim()) ? propertyType.trim() : null,
+            propertyTypeOther: (propertyTypeOther && typeof propertyTypeOther === 'string' && propertyTypeOther.trim()) ? propertyTypeOther.trim() : null,
+            carpetArea: (carpetArea && typeof carpetArea === 'string' && carpetArea.trim()) ? carpetArea.trim() : null,
+            facing: (facing && typeof facing === 'string' && facing.trim()) ? facing.trim() : null,
+            parkingNo: (parkingNo && typeof parkingNo === 'string' && parkingNo.trim()) ? parkingNo.trim() : null,
+            specialFeatures: (specialFeatures && typeof specialFeatures === 'string' && specialFeatures.trim()) ? specialFeatures.trim() : null,
             // Additional Financial Details
             bookingAmount: bookingAmount || 0,
             paymentMode: paymentMode || null,
@@ -333,21 +364,31 @@ const Create = async (req, res) => {
                 } catch (uploadError) {
                     console.error('Transaction Document upload error:', uploadError);
                 }
-                }
             }
 
             // Update booking with uploaded documents
             if (uploadedDocuments.length > 0) {
                 purchaseBooking.documents = uploadedDocuments;
                 await purchaseBooking.save();
+            }
         }
 
-        //update the property status to sold
-        var propertyModel = await PropertyModel.findById(propertyId);
-        propertyModel.propertyStatus = "SOLD";
-        property.updatedByUserId = req.user.id;
-        property.updatedAt = new Date();
-        await propertyModel.save();
+        // Update property status to SOLD only if it's NOT a building/apartment type
+        // For buildings/apartments, individual flats are booked, not the entire property
+        const propertyModel = await PropertyModel.findById(propertyId).populate('propertyTypeId');
+        if (propertyModel) {
+            const propertyTypeName = propertyModel.propertyTypeId?.typeName?.toUpperCase() || '';
+            const buildingTypes = ['APARTMENT', 'BUILDING', 'FLAT', 'CONDOMINIUM', 'TOWER'];
+            const isBuildingType = buildingTypes.some(type => propertyTypeName.includes(type));
+            
+            // Only mark as SOLD if it's NOT a building/apartment type
+            if (!isBuildingType) {
+                propertyModel.propertyStatus = "SOLD";
+                propertyModel.updatedByUserId = req.user.id;
+                propertyModel.updatedAt = new Date();
+                await propertyModel.save();
+            }
+        }
 
         return res.status(201).json({
             message: 'Purchase booking created successfully',
@@ -580,11 +621,46 @@ const UpdatePurchaseBooking = async (req, res) => {
             });
         }
 
+        // Process property details fields - convert empty strings to null for consistency
+        if (updateData.flatNo !== undefined) {
+            updateData.flatNo = (updateData.flatNo && typeof updateData.flatNo === 'string' && updateData.flatNo.trim()) ? updateData.flatNo.trim() : null;
+        }
+        if (updateData.floorNo !== undefined) {
+            updateData.floorNo = (updateData.floorNo !== undefined && updateData.floorNo !== null && updateData.floorNo !== '') ? (typeof updateData.floorNo === 'string' ? parseInt(updateData.floorNo) : updateData.floorNo) : null;
+        }
+        if (updateData.balconies !== undefined) {
+            updateData.balconies = (updateData.balconies !== undefined && updateData.balconies !== null && updateData.balconies !== '') ? (typeof updateData.balconies === 'string' ? parseInt(updateData.balconies) : updateData.balconies) : null;
+        }
+        if (updateData.otherDetails !== undefined) {
+            updateData.otherDetails = (updateData.otherDetails && typeof updateData.otherDetails === 'string' && updateData.otherDetails.trim()) ? updateData.otherDetails.trim() : null;
+        }
+        if (updateData.towerWing !== undefined) {
+            updateData.towerWing = (updateData.towerWing && typeof updateData.towerWing === 'string' && updateData.towerWing.trim()) ? updateData.towerWing.trim() : null;
+        }
+        if (updateData.propertyType !== undefined) {
+            updateData.propertyType = (updateData.propertyType && typeof updateData.propertyType === 'string' && updateData.propertyType.trim()) ? updateData.propertyType.trim() : null;
+        }
+        if (updateData.propertyTypeOther !== undefined) {
+            updateData.propertyTypeOther = (updateData.propertyTypeOther && typeof updateData.propertyTypeOther === 'string' && updateData.propertyTypeOther.trim()) ? updateData.propertyTypeOther.trim() : null;
+        }
+        if (updateData.carpetArea !== undefined) {
+            updateData.carpetArea = (updateData.carpetArea && typeof updateData.carpetArea === 'string' && updateData.carpetArea.trim()) ? updateData.carpetArea.trim() : null;
+        }
+        if (updateData.facing !== undefined) {
+            updateData.facing = (updateData.facing && typeof updateData.facing === 'string' && updateData.facing.trim()) ? updateData.facing.trim() : null;
+        }
+        if (updateData.parkingNo !== undefined) {
+            updateData.parkingNo = (updateData.parkingNo && typeof updateData.parkingNo === 'string' && updateData.parkingNo.trim()) ? updateData.parkingNo.trim() : null;
+        }
+        if (updateData.specialFeatures !== undefined) {
+            updateData.specialFeatures = (updateData.specialFeatures && typeof updateData.specialFeatures === 'string' && updateData.specialFeatures.trim()) ? updateData.specialFeatures.trim() : null;
+        }
+
         updateData.updatedByUserId = req.user.id;
         const updatedPurchaseBooking = await PurchaseBookingModel.findOneAndUpdate(
             { bookingId: id },
-            updateData,
-            { new: true }
+            { $set: updateData },
+            { new: true, runValidators: true }
         )
             .populate('propertyId')
             .populate('customerId')
@@ -1306,6 +1382,72 @@ const GetDocumentFromPurchaseBooking = async (req, res) => {
     }
 };
 
+/**
+ * Get flat statuses for a property (booked/sold/available)
+ * Returns which flats are booked or sold for building chart visualization
+ */
+const GetFlatStatusesByProperty = async (req, res) => {
+    try {
+        const { propertyId } = req.params;
+
+        if (!propertyId) {
+            return res.status(400).json({
+                message: 'Property ID is required',
+                data: null
+            });
+        }
+
+        // Get all purchase bookings for this property
+        const bookings = await PurchaseBookingModel.find({
+            propertyId: propertyId,
+            published: true
+        }).select({
+            flatNo: 1,
+            floorNo: 1,
+            bookingStatus: 1
+        }).lean();
+
+        // Separate booked and sold flats
+        const bookedFlats = [];
+        const soldFlats = [];
+
+        bookings.forEach(booking => {
+            if (booking.flatNo || booking.floorNo) {
+                const flatInfo = {
+                    flatNo: booking.flatNo || null,
+                    floorNo: booking.floorNo || null,
+                    bookingStatus: booking.bookingStatus
+                };
+
+                // Sold: COMPLETED status
+                if (booking.bookingStatus === 'COMPLETED') {
+                    soldFlats.push(flatInfo);
+                } 
+                // Booked: PENDING, CONFIRMED status
+                else if (booking.bookingStatus === 'PENDING' || booking.bookingStatus === 'CONFIRMED') {
+                    bookedFlats.push(flatInfo);
+                }
+            }
+        });
+
+        return res.status(200).json({
+            message: 'Flat statuses retrieved successfully',
+            data: {
+                bookedFlats,
+                soldFlats,
+                totalBooked: bookedFlats.length,
+                totalSold: soldFlats.length
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 export {
     Create,
     GetAllPurchaseBookings,
@@ -1323,5 +1465,6 @@ export {
     AddDocumentsToPurchaseBooking,
     DeleteDocumentFromPurchaseBooking,
     UpdateDocumentInPurchaseBooking,
-    GetDocumentFromPurchaseBooking
+    GetDocumentFromPurchaseBooking,
+    GetFlatStatusesByProperty
 }; 

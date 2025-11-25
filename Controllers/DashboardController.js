@@ -49,7 +49,7 @@ export class DashboardController {
             });
             
             console.log('Role-wise customers from backend:', roleWiseCustomers);
-            
+
             // Temporarily set these to 0 to avoid the ObjectId casting error
             const activeLeads = 0;
             const pendingFollowups = 0;

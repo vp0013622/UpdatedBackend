@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const Create = async (req, res) => {
     try {
-        const { name, propertyTypeId, description, propertyAddress, owner, price, propertyStatus, features, listedDate} = req.body
+        const { name, propertyTypeId, description, propertyAddress, owner, price, propertyStatus, features, listedDate, buildingStructure} = req.body
         if (!name || !propertyTypeId || !description || !propertyAddress || !owner || !price || !propertyStatus || !features || !listedDate) {
             return res.status(400).json({
                 message: 'bad request check data again',
@@ -34,9 +34,17 @@ const Create = async (req, res) => {
             listedDate: listedDate,
             createdByUserId: req.user.id,
             updatedByUserId: req.user.id,
-            published: true
+            published: true,
+            buildingStructure: buildingStructure || null
         }
         const property = await PropertyModel.create(newProperty)
+        
+        // If buildingStructure was provided, ensure it's saved correctly
+        if (buildingStructure) {
+            property.buildingStructure = buildingStructure;
+            property.markModified('buildingStructure');
+            await property.save();
+        }
         return res.status(200).json({
             message: 'property added successfully',
             data: property
@@ -229,21 +237,26 @@ const GetPropertyById = async (req, res) => {
 
 const Edit = async (req, res) => {
     try {
-        const { name, propertyTypeId, description, propertyAddress, owner, price, propertyStatus, features, listedDate, published} = req.body
+        const { name, propertyTypeId, description, propertyAddress, owner, price, propertyStatus, features, listedDate, published, buildingStructure} = req.body
+        var { id } = req.params
+        
         if (!name || !propertyTypeId || !description || !propertyAddress || !owner || !price || !propertyStatus || !features || !listedDate) {
             return res.status(400).json({
                 message: 'bad request check data again',
                 data: req.body
             })
         }
-        var { id } = req.params
+        
+        // Fetch existing property
         const property = await PropertyModel.findById(id)
         if (!property) {
             return res.status(404).json({
                 message: 'property not found'
             })
         }
-        const newProperty = {
+        
+        // Prepare update object
+        const updateData = {
             name: name,
             propertyTypeId: propertyTypeId,
             description: description,
@@ -252,21 +265,54 @@ const Edit = async (req, res) => {
             price: price,
             propertyStatus: propertyStatus.toUpperCase(),
             features: features,
-            listedDate: property.listedDate,
-            createdByUserId: property.createdByUserId,
             updatedByUserId: req.user.id,
-            published: published !== undefined ? published : property.published,
-            brochureUrl: req.body.brochureUrl !== undefined ? req.body.brochureUrl : property.brochureUrl
+            published: published !== undefined ? published : property.published
+        };
+        
+        if (req.body.brochureUrl !== undefined) {
+            updateData.brochureUrl = req.body.brochureUrl;
         }
         
-        const result = await PropertyModel.findByIdAndUpdate(id, newProperty)
+        // Handle buildingStructure - always update if provided in request
+        if (buildingStructure !== undefined) {
+            if (buildingStructure === null) {
+                updateData.buildingStructure = null;
+            } else if (buildingStructure && typeof buildingStructure === 'object') {
+                const parsedStructure = {
+                    totalFloors: buildingStructure.totalFloors ? parseInt(buildingStructure.totalFloors) : null,
+                    flatsPerFloor: buildingStructure.flatsPerFloor ? parseInt(buildingStructure.flatsPerFloor) : null,
+                    totalFlats: buildingStructure.totalFlats ? parseInt(buildingStructure.totalFlats) : null
+                };
+                updateData.buildingStructure = parsedStructure;
+            } else {
+            }
+        }
+        
+        // Use findByIdAndUpdate with $set for reliable nested object updates
+        const updateQuery = { $set: updateData };
+        const result = await PropertyModel.findByIdAndUpdate(
+            id,
+            updateQuery,
+            { new: true, runValidators: true }
+        )
+        .populate('propertyTypeId')
+        .populate('owner');
+        
         if (!result) {
             return res.status(404).json({
                 message: 'property not found'
-            })
+            });
         }
-        return res.status(201).json({
-            message: 'property updated successfully'
+        
+        // Convert to plain object
+        const resultObject = result.toObject ? result.toObject() : result;
+        
+        // Verify in database directly
+        const verifyProperty = await PropertyModel.findById(id).lean();
+        
+        return res.status(200).json({
+            message: 'property updated successfully',
+            data: resultObject
         })
         
 

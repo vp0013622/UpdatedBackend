@@ -59,7 +59,16 @@ export const PropertySchema = mongoose.Schema(
             amenities: { type: [String], default: [] }
           },
           required: true
-        },        
+        },
+        // Building structure details (for apartment/building type properties)
+        buildingStructure: {
+          type: {
+            totalFloors: { type: Number, default: null },
+            flatsPerFloor: { type: Number, default: null },
+            totalFlats: { type: Number, default: null }
+          },
+          default: null
+        },
         //add give features to add the images after save of this property
         listedDate:{
           type: Date,

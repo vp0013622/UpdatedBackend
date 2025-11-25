@@ -16,7 +16,8 @@ import {
     AddDocumentsToPurchaseBooking,
     DeleteDocumentFromPurchaseBooking,
     UpdateDocumentInPurchaseBooking,
-    GetDocumentFromPurchaseBooking
+    GetDocumentFromPurchaseBooking,
+    GetFlatStatusesByProperty
 } from '../../Controllers/booking/PurchaseBookingController.js'
 import { RoleAuthMiddleware } from '../../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../../Middlewares/AuthMiddelware.js'
@@ -103,5 +104,8 @@ PurchaseBookingRouter.get('/reports/pending-installments', RoleAuthMiddleware("a
 
 // Get all overdue installment payments that are past their due date
 PurchaseBookingRouter.get('/reports/overdue-installments', RoleAuthMiddleware("admin", "sales", "executive"), GetOverdueInstallments)
+
+// Get flat statuses for a property (for building chart)
+PurchaseBookingRouter.get('/property/:propertyId/flat-statuses', AuthMiddelware, GetFlatStatusesByProperty)
 
 export default PurchaseBookingRouter 
