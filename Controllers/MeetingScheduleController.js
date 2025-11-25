@@ -285,23 +285,24 @@ const GetMyTodaysMeetings = async (req, res) => {
 
         console.log('Found meetings for today:', meetings.length, meetings);
 
-        // Debug: Check all meetings for this user
-        const allUserMeetings = await MeetingScheduleModel.find({
-            published: true,
-            customerId: id
-        console.log('All meetings for user:', allUserMeetings.length, allUserMeetings);
+        // // Debug: Check all meetings for this user
+        // const allUserMeetings = await MeetingScheduleModel.find({
+        //     published: true,
+        //     customerId: id
+        // }).populate('status', 'name statusCode description');
+        // console.log('All meetings for user:', allUserMeetings.length, allUserMeetings);
         
-        // Debug: Check meeting dates
-        allUserMeetings.forEach((meeting, index) => {
-            console.log(`Meeting ${index + 1}:`, {
-                id: meeting._id,
-                meetingDate: meeting.meetingDate,
-                startTime: meeting.startTime,
-                isToday: meeting.meetingDate >= startOfDay && meeting.meetingDate < endOfDay,
-                customerId: meeting.customerId
-            });
-        });
-        }).populate('status', 'name statusCode description');
+        // // Debug: Check meeting dates
+        // allUserMeetings.forEach((meeting, index) => {
+        //     console.log(`Meeting ${index + 1}:`, {
+        //         id: meeting._id,
+        //         meetingDate: meeting.meetingDate,
+        //         startTime: meeting.startTime,
+        //         isToday: meeting.meetingDate >= startOfDay && meeting.meetingDate < endOfDay,
+        //         customerId: meeting.customerId
+        //     });
+        // });
+        // }).populate('status', 'name statusCode description');
         
         return res.status(200).json({
             message: 'my today\'s meetings',
