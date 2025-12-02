@@ -123,20 +123,26 @@ export class ImageUploadService {
             const base64Document = `data:${this.getMimeType(originalName)};base64,${documentBuffer.toString('base64')}`;
             
             // Upload to Cloudinary with property-specific folder
+            // Use EXACT same configuration as documents to ensure same access behavior
             const uploadResult = await cloudinary.uploader.upload(base64Document, {
                 folder: `insightwaveit/property-brochures/${propertyId}`,
                 public_id: this.generatePublicId(originalName),
                 resource_type: 'auto', // Auto-detect resource type (PDF)
+                transformation: [
+                    { quality: 'auto', fetch_format: 'auto' }
+                ],
+                access_mode: 'public' // Explicitly set public access (same as documents)
             });
 
-            // Use secure_url directly from Cloudinary - same as documents use originalUrl from secure_url
-            // secure_url is the most reliable format and works without 401 errors
+            // Use secure_url directly from Cloudinary - EXACT same as documents use
+            // secure_url includes the proper version number and works without issues
             const brochureUrl = uploadResult.secure_url;
 
             return {
                 success: true,
                 data: {
                     brochureUrl: brochureUrl,
+                    originalUrl: brochureUrl, // Same as brochureUrl for consistency with documents
                     secureUrl: uploadResult.secure_url,
                     filename: uploadResult.original_filename,
                     size: uploadResult.bytes,

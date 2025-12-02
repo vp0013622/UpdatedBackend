@@ -948,10 +948,12 @@ const UploadPropertyBrochure = async (req, res) => {
         property.updatedByUserId = req.user?.id;
         await property.save();
 
+        // Return response structure matching documents (originalUrl for consistency)
         return res.status(200).json({
             message: 'Property brochure uploaded successfully',
             data: {
                 brochureUrl: uploadResult.data.brochureUrl,
+                originalUrl: uploadResult.data.brochureUrl, // Same as brochureUrl for consistency with documents
                 secureUrl: uploadResult.data.secureUrl || uploadResult.data.brochureUrl,
                 filename: uploadResult.data.filename,
                 size: uploadResult.data.size,
