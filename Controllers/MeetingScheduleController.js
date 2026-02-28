@@ -216,8 +216,6 @@ const GetMyMeetings = async (req, res) => {
             }
         ]);
 
-        console.log('GetMyMeetings counts debug:', id, JSON.stringify(statusCounts, null, 2));
-
         // Create counts object
         const counts = {
             totalMeetings: meetings.length,
