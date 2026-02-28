@@ -225,12 +225,12 @@ const GetMyMeetings = async (req, res) => {
 
         // Map status counts
         statusCounts.forEach(status => {
-            const statusName = status._id.toLowerCase();
-            if (statusName.includes('scheduled')) {
+            const statusName = status._id?.toLowerCase() || '';
+            if (statusName.includes('scheduled') && !statusName.includes('rescheduled')) {
                 counts.totalScheduled = status.count;
             } else if (statusName.includes('rescheduled')) {
                 counts.totalRescheduled = status.count;
-            } else if (statusName.includes('cancelled') || statusName.includes('canceled')) {
+            } else if (statusName.includes('cancel')) {
                 counts.totalCancelled = status.count;
             } else if (statusName.includes('completed')) {
                 counts.totalCompleted = status.count;
