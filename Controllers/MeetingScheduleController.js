@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { MeetingScheduleModel } from "../Models/MeetingScheduleModel.js";
 import { MeetingScheduleStatusModel } from "../Models/MeetingScheduleStatusModel.js";
 import NotificationService from "../Services/NotificationService.js";
@@ -137,12 +138,12 @@ const GetAllMeetingSchedules = async (req, res) => {
 
         // Map status counts
         statusCounts.forEach(status => {
-            const statusName = status._id.toLowerCase();
-            if (statusName.includes('scheduled')) {
+            const statusName = status._id?.toLowerCase() || '';
+            if (statusName.includes('scheduled') && !statusName.includes('rescheduled')) {
                 counts.totalScheduled = status.count;
             } else if (statusName.includes('rescheduled')) {
                 counts.totalRescheduled = status.count;
-            } else if (statusName.includes('cancelled') || statusName.includes('canceled')) {
+            } else if (statusName.includes('cancel')) {
                 counts.totalCancelled = status.count;
             } else if (statusName.includes('completed')) {
                 counts.totalCompleted = status.count;
@@ -167,6 +168,7 @@ const GetAllMeetingSchedules = async (req, res) => {
 const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
+        const objectId = new mongoose.Types.ObjectId(id);
 
         // Find meetings where user is customer, sales person, or executive
         const meetings = await MeetingScheduleModel.find({
@@ -190,10 +192,10 @@ const GetMyMeetings = async (req, res) => {
                 $match: {
                     published: true,
                     $or: [
-                        { customerId: id },
-                        { salesPersonId: id },
-                        { executiveId: id },
-                        { scheduledByUserId: id }
+                        { customerId: objectId },
+                        { salesPersonId: objectId },
+                        { executiveId: objectId },
+                        { scheduledByUserId: objectId }
                     ]
                 }
             },
@@ -213,6 +215,8 @@ const GetMyMeetings = async (req, res) => {
                 }
             }
         ]);
+
+        console.log('GetMyMeetings counts debug:', id, JSON.stringify(statusCounts, null, 2));
 
         // Create counts object
         const counts = {
