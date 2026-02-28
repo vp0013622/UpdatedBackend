@@ -25,16 +25,40 @@ export class DashboardController {
             const totalSales = soldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
 
             // Debugging logs
-            
+
 
             // Get counts
-            const totalLeads = await LeadsModel.countDocuments({ published: true });
+            const allLeads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
+            const totalLeads = allLeads.length;
+
+            console.log("--- DASHBOARD ALL LEAD STATUS NAMES ---", allLeads.map(l => l.leadStatus?.name || l.leadStatus));
+
+            const activeLeads = allLeads.filter(lead => {
+                let statusVal = null;
+                if (typeof lead.leadStatus === 'string') {
+                    statusVal = lead.leadStatus;
+                } else if (lead.leadStatus && lead.leadStatus.name) {
+                    statusVal = lead.leadStatus.name;
+                }
+
+                return statusVal && statusVal.toLowerCase() === 'active';
+            }).length;
+
+            const pendingFollowups = allLeads.filter(lead => {
+                if (typeof lead.followUpStatus === 'string') {
+                    return lead.followUpStatus.toLowerCase() === 'pending';
+                } else if (lead.followUpStatus && lead.followUpStatus.name) {
+                    return lead.followUpStatus.name.toLowerCase() === 'pending';
+                }
+                return false;
+            }).length;
+
             const totalUsers = await UsersModel.countDocuments({ published: true });
-            
+
             // Get booking counts
             const totalRentalBookings = await RentalBookingModel.countDocuments({ published: true });
             const totalPurchaseBookings = await PurchaseBookingModel.countDocuments({ published: true });
-            
+
             // Get role-wise customer counts
             const users = await UsersModel.find({ published: true });
             const roleWiseCustomers = {};
@@ -47,12 +71,8 @@ export class DashboardController {
                 }
                 roleWiseCustomers[role] = (roleWiseCustomers[role] || 0) + 1;
             });
-            
-            console.log('Role-wise customers from backend:', roleWiseCustomers);
 
-            // Temporarily set these to 0 to avoid the ObjectId casting error
-            const activeLeads = 0;
-            const pendingFollowups = 0;
+            console.log('Role-wise customers from backend:', roleWiseCustomers);
 
             // Calculate average rating (placeholder for now)
             const averageRating = 4.5;
@@ -115,9 +135,9 @@ export class DashboardController {
         try {
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
-            
+
             const properties = await PropertyModel.find({ published: true }).populate('propertyTypeId');
-            
+
             // Property status distribution
             const statusDistribution = {};
             properties.forEach(prop => {
@@ -154,8 +174,8 @@ export class DashboardController {
             const currentDate = new Date();
             const timeFrameDate = new Date();
             timeFrameDate.setMonth(currentDate.getMonth() - months);
-            
-            const recentProperties = properties.filter(prop => 
+
+            const recentProperties = properties.filter(prop =>
                 new Date(prop.createdAt) >= timeFrameDate
             );
 
@@ -192,7 +212,7 @@ export class DashboardController {
 
             // Sort by total sales (descending)
             const sortedPropertyTypeSales = Object.entries(propertyTypeSales)
-                .sort(([,a], [,b]) => b.totalSales - a.totalSales)
+                .sort(([, a], [, b]) => b.totalSales - a.totalSales)
                 .reduce((obj, [key, value]) => {
                     obj[key] = value;
                     return obj;
@@ -210,7 +230,7 @@ export class DashboardController {
                     typeDistribution,
                     priceRanges,
                     propertyTypeSales: sortedPropertyTypeSales,
-                    averagePrice: properties.length > 0 ? 
+                    averagePrice: properties.length > 0 ?
                         properties.reduce((sum, prop) => sum + (prop.price || 0), 0) / properties.length : 0,
                     recentProperties: recentProperties.length,
                     timeFrame
@@ -231,10 +251,10 @@ export class DashboardController {
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('LEAD ANALYTICS DEBUG: timeFrame =', timeFrame, 'months =', months);
-            
+
             const leads = await LeadsModel.find({ published: true });
             //console.log('LEAD ANALYTICS DEBUG: leads count =', leads.length);
-            
+
             // Lead status distribution
             const statusDistribution = {};
             leads.forEach(lead => {
@@ -270,8 +290,8 @@ export class DashboardController {
             const currentDate = new Date();
             const timeFrameDate = new Date();
             timeFrameDate.setMonth(currentDate.getMonth() - months);
-            
-            const recentLeads = leads.filter(lead => 
+
+            const recentLeads = leads.filter(lead =>
                 new Date(lead.createdAt) >= timeFrameDate
             ).slice(0, 5); // Get only first 5 recent leads
 
@@ -337,17 +357,17 @@ export class DashboardController {
             // Use the correct reference for the helper
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('SALES ANALYTICS DEBUG: timeFrame =', timeFrame, 'months =', months);
-            
-            const soldProperties = await PropertyModel.find({ 
-                propertyStatus: 'SOLD', 
-                published: true 
+
+            const soldProperties = await PropertyModel.find({
+                propertyStatus: 'SOLD',
+                published: true
             });
             //console.log('SALES ANALYTICS DEBUG: soldProperties count =', soldProperties.length);
 
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
             const currentDate = new Date();
-            
+
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
                 const monthKey = month.toISOString().slice(0, 7); // YYYY-MM format
@@ -360,7 +380,7 @@ export class DashboardController {
             soldProperties.forEach(prop => {
                 const soldDate = new Date(prop.updatedAt || prop.createdAt);
                 const monthKey = soldDate.toISOString().slice(0, 7);
-                
+
                 if (monthlyPerformance[monthKey]) {
                     monthlyPerformance[monthKey].propertiesSold++;
                     monthlyPerformance[monthKey].revenue += prop.price || 0;
@@ -371,7 +391,7 @@ export class DashboardController {
             const totalRevenue = soldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
 
             // Average sale price
-            const averageSalePrice = soldProperties.length > 0 ? 
+            const averageSalePrice = soldProperties.length > 0 ?
                 totalRevenue / soldProperties.length : 0;
 
             res.status(200).json({
@@ -412,11 +432,11 @@ export class DashboardController {
             // User performance (leads assigned to each user)
             const userPerformance = [];
             for (const user of users) {
-                const userLeads = leads.filter(lead => 
+                const userLeads = leads.filter(lead =>
                     lead.assignedTo === user._id.toString()
                 );
-                
-                const userProperties = properties.filter(prop => 
+
+                const userProperties = properties.filter(prop =>
                     prop.createdByUserId === user._id.toString()
                 );
 
@@ -647,9 +667,9 @@ export class DashboardController {
     static async getLeadConversionRates(req, res) {
         try {
             const leads = await LeadsModel.find({ published: true });
-            
+
             const totalLeads = leads.length;
-            const convertedLeads = leads.filter(lead => 
+            const convertedLeads = leads.filter(lead =>
                 lead.leadStatus === 'converted' || lead.leadStatus === 'closed'
             ).length;
 
@@ -661,10 +681,10 @@ export class DashboardController {
 
             designations.forEach(designation => {
                 const designationLeads = leads.filter(lead => lead.leadDesignation === designation);
-                const converted = designationLeads.filter(lead => 
+                const converted = designationLeads.filter(lead =>
                     lead.leadStatus === 'converted' || lead.leadStatus === 'closed'
                 ).length;
-                
+
                 designationConversion[designation] = {
                     total: designationLeads.length,
                     converted: converted,
@@ -694,23 +714,23 @@ export class DashboardController {
     // Get financial summary
     static async getFinancialSummary(req, res) {
         try {
-            const soldProperties = await PropertyModel.find({ 
-                propertyStatus: 'SOLD', 
-                published: true 
+            const soldProperties = await PropertyModel.find({
+                propertyStatus: 'SOLD',
+                published: true
             });
 
             const totalRevenue = soldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-            const averageSalePrice = soldProperties.length > 0 ? 
+            const averageSalePrice = soldProperties.length > 0 ?
                 totalRevenue / soldProperties.length : 0;
 
             // Monthly revenue for current year
             const currentYear = new Date().getFullYear();
             const monthlyRevenue = {};
-            
+
             for (let month = 1; month <= 12; month++) {
                 const monthStart = new Date(currentYear, month - 1, 1);
                 const monthEnd = new Date(currentYear, month, 1);
-                
+
                 const monthSales = soldProperties.filter(prop => {
                     const soldDate = new Date(prop.updatedAt || prop.createdAt);
                     return soldDate >= monthStart && soldDate < monthEnd;
@@ -744,17 +764,17 @@ export class DashboardController {
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('ADMIN PERFORMANCE DEBUG: timeFrame =', timeFrame, 'months =', months);
-            
-            const soldProperties = await PropertyModel.find({ 
-                propertyStatus: 'SOLD', 
-                published: true 
+
+            const soldProperties = await PropertyModel.find({
+                propertyStatus: 'SOLD',
+                published: true
             });
             //console.log('ADMIN PERFORMANCE DEBUG: soldProperties count =', soldProperties.length);
 
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
             const currentDate = new Date();
-            
+
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
                 const monthKey = month.toISOString().slice(0, 7); // YYYY-MM format
@@ -767,7 +787,7 @@ export class DashboardController {
             soldProperties.forEach(prop => {
                 const soldDate = new Date(prop.updatedAt || prop.createdAt);
                 const monthKey = soldDate.toISOString().slice(0, 7);
-                
+
                 if (monthlyPerformance[monthKey]) {
                     monthlyPerformance[monthKey].propertiesSold++;
                     monthlyPerformance[monthKey].revenue += prop.price || 0;
@@ -777,7 +797,7 @@ export class DashboardController {
             // Total performance metrics
             const totalPropertiesSold = soldProperties.length;
             const totalRevenue = soldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-            const averageSalePrice = soldProperties.length > 0 ? 
+            const averageSalePrice = soldProperties.length > 0 ?
                 totalRevenue / soldProperties.length : 0;
 
             // console.log('ADMIN PERFORMANCE DEBUG: Response data =', {
@@ -815,17 +835,17 @@ export class DashboardController {
             const userId = req.user.id;
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
-            
+
             // Get leads assigned to this sales person
-            const assignedLeads = await LeadsModel.find({ 
+            const assignedLeads = await LeadsModel.find({
                 assignedTo: userId,
-                published: true 
+                published: true
             });
 
             // Get properties sold by leads assigned to this sales person
-            const soldProperties = await PropertyModel.find({ 
-                propertyStatus: 'SOLD', 
-                published: true 
+            const soldProperties = await PropertyModel.find({
+                propertyStatus: 'SOLD',
+                published: true
             });
 
             // Filter properties that were sold by leads assigned to this sales person
@@ -841,7 +861,7 @@ export class DashboardController {
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
             const currentDate = new Date();
-            
+
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
                 const monthKey = month.toISOString().slice(0, 7); // YYYY-MM format
@@ -856,7 +876,7 @@ export class DashboardController {
             assignedLeads.forEach(lead => {
                 const leadDate = new Date(lead.createdAt);
                 const monthKey = leadDate.toISOString().slice(0, 7);
-                
+
                 if (monthlyPerformance[monthKey]) {
                     monthlyPerformance[monthKey].leadsConverted++;
                 }
@@ -865,7 +885,7 @@ export class DashboardController {
             userSoldProperties.forEach(prop => {
                 const soldDate = new Date(prop.updatedAt || prop.createdAt);
                 const monthKey = soldDate.toISOString().slice(0, 7);
-                
+
                 if (monthlyPerformance[monthKey]) {
                     monthlyPerformance[monthKey].propertiesSold++;
                     monthlyPerformance[monthKey].revenue += prop.price || 0;
@@ -876,7 +896,7 @@ export class DashboardController {
             const totalLeadsAssigned = assignedLeads.length;
             const totalPropertiesSold = userSoldProperties.length;
             const totalRevenue = userSoldProperties.reduce((sum, prop) => sum + (prop.price || 0), 0);
-            const conversionRate = totalLeadsAssigned > 0 ? 
+            const conversionRate = totalLeadsAssigned > 0 ?
                 (totalPropertiesSold / totalLeadsAssigned) * 100 : 0;
 
             res.status(200).json({
@@ -935,10 +955,10 @@ export class DashboardController {
                 },
                 published: true
             }).populate('scheduledByUserId', 'firstName lastName')
-              .populate('customerId', 'firstName lastName')
-              .populate('propertyId', 'name')
-              .populate('status', 'name statusCode')
-              .sort({ startTime: 1 });
+                .populate('customerId', 'firstName lastName')
+                .populate('propertyId', 'name')
+                .populate('status', 'name statusCode')
+                .sort({ startTime: 1 });
 
             res.status(200).json({
                 statusCode: 200,
