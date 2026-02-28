@@ -174,7 +174,8 @@ const GetMyMeetings = async (req, res) => {
             $or: [
                 { customerId: id },
                 { salesPersonId: id },
-                { executiveId: id }
+                { executiveId: id },
+                { scheduledByUserId: id }
             ]
         })
             .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
@@ -191,7 +192,8 @@ const GetMyMeetings = async (req, res) => {
                     $or: [
                         { customerId: id },
                         { salesPersonId: id },
-                        { executiveId: id }
+                        { executiveId: id },
+                        { scheduledByUserId: id }
                     ]
                 }
             },
@@ -269,7 +271,8 @@ const GetMyTodaysMeetings = async (req, res) => {
             $or: [
                 { customerId: id },
                 { salesPersonId: id },
-                { executiveId: id }
+                { executiveId: id },
+                { scheduledByUserId: id }
             ],
             meetingDate: {
                 $gte: startOfDay,
@@ -338,7 +341,8 @@ const GetMyTomorrowsMeetings = async (req, res) => {
             $or: [
                 { customerId: id },
                 { salesPersonId: id },
-                { executiveId: id }
+                { executiveId: id },
+                { scheduledByUserId: id }
             ],
             meetingDate: {
                 $gte: startOfDay,
