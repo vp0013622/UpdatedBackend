@@ -3,8 +3,8 @@ import mongoose from 'mongoose'
 import cors from 'cors'
 import multer from 'multer'
 import bcrypt from 'bcrypt'
-import {AuthMiddelware} from './Middlewares/AuthMiddelware.js'
-import {RoleAuthMiddleware} from './Middlewares/RoleAuthMiddelware.js'
+import { AuthMiddelware } from './Middlewares/AuthMiddelware.js'
+import { RoleAuthMiddleware } from './Middlewares/RoleAuthMiddelware.js'
 import { errorHandler } from './Middlewares/Handlers/ErrorHandler.js'
 import UsersRouter from './Routes/usersRoutes.js'
 import { GetAgents } from './Controllers/UsersController.js'
@@ -66,23 +66,23 @@ app.use(express.json())
 
 //middle ware for cores policy: configured for environment
 app.use(cors({
-  //origin: config.CORS_ORIGIN,
-//<<<<<<< HEAD
-  origin: "*",
-//=======
-  origin: '*',
-//>>>>>>> 3cfd837 (Add assigned leads endpoint, fix route order, and update leads controller)
-  credentials: true
+    //origin: config.CORS_ORIGIN,
+    //<<<<<<< HEAD
+    origin: "*",
+    //=======
+    origin: '*',
+    //>>>>>>> 3cfd837 (Add assigned leads endpoint, fix route order, and update leads controller)
+    credentials: true
 }));
 
 //defult route.
-app.get('/', (req, res)=>{
-    
+app.get('/', (req, res) => {
+
     return res.status(200).json({
         message: 'welcome to api'
     })
 })
-app.get('/api/', (req, res)=>{
+app.get('/api/', (req, res) => {
     return res.status(200).json({
         message: 'welcome to api'
     })
@@ -109,11 +109,11 @@ const createAdminRole = async () => {
     }
 }
 
-app.post('/api/tempSetup', async(req, res, next) => {
+app.post('/api/tempSetup', async (req, res, next) => {
     try {
         // First create or get admin role
         const adminRole = await createAdminRole();
-        
+
         // Check if admin user already exists
         const existingAdmin = await UsersModel.findOne({ email: "admin@gmail.com" });
         if (existingAdmin) {
@@ -146,11 +146,11 @@ app.post('/api/tempSetup', async(req, res, next) => {
         }
 
         const user = await UsersModel.create(newUser);
-        
+
         // Don't send password in response
         const responseUser = { ...user.toObject() };
         delete responseUser.password;
-        
+
         return res.status(200).json({
             message: 'Admin user created successfully',
             data: responseUser
@@ -161,15 +161,15 @@ app.post('/api/tempSetup', async(req, res, next) => {
     }
 });
 
-app.get('/api/auth/check', AuthMiddelware, async(req, res)=>{
+app.get('/api/auth/check', AuthMiddelware, async (req, res) => {
     res.status(200).json({
-            message: 'Authenticated',
-            data: true
+        message: 'Authenticated',
+        data: true
     })
 })
 
 // Manual endpoint to create default document types
-app.post('/api/setup/documenttypes', async(req, res, next) => {
+app.post('/api/setup/documenttypes', async (req, res, next) => {
     try {
         await createDefaultDocumentTypes();
         res.status(200).json({
@@ -251,33 +251,33 @@ app.use('/api/normaluser', RegisterNormalUserRouter)
 app.get('/api/agents', GetAgents) // Public endpoint for agents - separate path to avoid conflicts
 
 // Protected routes
-app.use('/api/users',AuthMiddelware, UsersRouter)
-app.use('/api/roles',AuthMiddelware, RolesRouter)
-app.use('/api/useraddress',AuthMiddelware, UserAddressRouter)
+app.use('/api/users', AuthMiddelware, UsersRouter)
+app.use('/api/roles', AuthMiddelware, RolesRouter)
+app.use('/api/useraddress', AuthMiddelware, UserAddressRouter)
 app.use('/api/propertytypes', PropertyTypesRouter) // Public access for GET /, protected routes have their own middleware
 app.use('/api/property', PropertyRouter) // Public access for GET / and GET /home, protected routes have their own middleware
-app.use('/api/favoriteproperty',AuthMiddelware, FavoritePropertyRouter)
+app.use('/api/favoriteproperty', AuthMiddelware, FavoritePropertyRouter)
 app.use('/api/property-view', PropertyViewRouter)
-app.use('/api/followupstatus',AuthMiddelware, FollowUpStatusRouter)
-app.use('/api/leadstatus',AuthMiddelware, LeadStatusRouter)
-app.use('/api/referancesource',AuthMiddelware, ReferenceSourceRouter)
+app.use('/api/followupstatus', AuthMiddelware, FollowUpStatusRouter)
+app.use('/api/leadstatus', AuthMiddelware, LeadStatusRouter)
+app.use('/api/referancesource', AuthMiddelware, ReferenceSourceRouter)
 // Public route for contact us form (no authentication required)
 app.use('/api/leads', ContactLeadRouter)
 // Authenticated routes for leads
-app.use('/api/leads',AuthMiddelware, LeadsRouter)
-app.use('/api/documents',AuthMiddelware, DocumentRouter)
-app.use('/api/documenttypes',AuthMiddelware, DocumentTypesRouter)
-app.use('/api/dashboard',AuthMiddelware, DashboardRouter)
-app.use('/api/meetingschedulestatus',AuthMiddelware, MeetingScheduleStatusRouter)
-app.use('/api/meetingschedule',AuthMiddelware, MeetingScheduleRouter)
-app.use('/api/notifications',AuthMiddelware, NotificationRouter)
+app.use('/api/leads', AuthMiddelware, LeadsRouter)
+app.use('/api/documents', AuthMiddelware, DocumentRouter)
+app.use('/api/documenttypes', AuthMiddelware, DocumentTypesRouter)
+app.use('/api/dashboard', AuthMiddelware, DashboardRouter)
+app.use('/api/meetingschedulestatus', AuthMiddelware, MeetingScheduleStatusRouter)
+app.use('/api/meetingschedule', AuthMiddelware, MeetingScheduleRouter)
+app.use('/api/notifications', AuthMiddelware, NotificationRouter)
 app.use('/api/feedback', FeedbackRouter)
 
 // Booking Routes
-app.use('/api/rental-bookings',AuthMiddelware, RentalBookingRouter)
-app.use('/api/purchase-bookings',AuthMiddelware, PurchaseBookingRouter)
-app.use('/api/payment-history',AuthMiddelware, PaymentHistoryRouter)
-app.use('/api/booking-documents',AuthMiddelware, BookingDocumentRouter)
+app.use('/api/rental-bookings', AuthMiddelware, RentalBookingRouter)
+app.use('/api/purchase-bookings', AuthMiddelware, PurchaseBookingRouter)
+app.use('/api/payment-history', AuthMiddelware, PaymentHistoryRouter)
+app.use('/api/booking-documents', AuthMiddelware, BookingDocumentRouter)
 
 
 //document type and document updated in github 02_06_2025
@@ -287,17 +287,17 @@ app.use('/api/booking-documents',AuthMiddelware, BookingDocumentRouter)
 //DB_CONNECTION_STRING = "mongodb+srv://devtechyugam:Rishi1234@insightwaveitcluster.k3nis1u.mongodb.net/?retryWrites=true&w=majority&appName=InsightwaveitCluster"
 // DB Connection with error handling
 mongoose.connect(DB_CONNECTION_STRING)
-.then(async (response)=>{
-    console.log(`Database connected successfully`);
-    
-    // Create default document types
-    //await createDefaultDocumentTypes();
-    
-    app.listen(PORT, '0.0.0.0', (req, res)=>{
-        console.log(`Server is running on port ${PORT}`);
+    .then(async (response) => {
+        console.log(`Database connected successfully`);
+
+        // Create default document types
+        //await createDefaultDocumentTypes();
+
+        app.listen(PORT, '0.0.0.0', (req, res) => {
+            console.log(`Server is running on port ${PORT}`);
+        })
     })
-})
-.catch((error)=>{
-    console.error('Database connection error:', error);
-    process.exit(1);
-});
+    .catch((error) => {
+        console.error('Database connection error:', error);
+        process.exit(1);
+    });

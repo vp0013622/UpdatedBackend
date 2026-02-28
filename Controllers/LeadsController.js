@@ -63,12 +63,12 @@ const Create = async (req, res) => {
         }
 
         const lead = await LeadsModel.create(cleanedData)
-        
+
         // Populate lead for notifications
         const populatedLead = await LeadsModel.findById(lead._id)
             .populate('userId', 'firstName lastName email')
             .populate('leadInterestedPropertyId', 'name propertyName')
-        
+
         // Create notification for all roles except user when lead is created
         try {
             await NotificationService.createLeadCreatedNotification({
@@ -82,7 +82,7 @@ const Create = async (req, res) => {
             console.error('Error creating lead created notification:', notificationError);
             // Don't fail the lead creation if notification fails
         }
-        
+
         // Create notification if lead is assigned to someone
         if (cleanedData.assignedToUserId) {
             try {
@@ -101,7 +101,7 @@ const Create = async (req, res) => {
                 // Don't fail the lead creation if notification fails
             }
         }
-        
+
         return res.status(200).json({
             message: 'Lead created successfully',
             data: lead
@@ -259,6 +259,7 @@ const Edit = async (req, res) => {
         const { id } = req.params
         const lead = await LeadsModel.findById(id)
 
+
         if (!lead) {
             return res.status(404).json({
                 message: 'Lead not found'
@@ -363,10 +364,10 @@ const DeleteById = async (req, res) => {
 const GetAssignedLeadsForCurrentUser = async (req, res) => {
     try {
         const currentUserId = req.user.id
-        
-        const leads = await LeadsModel.find({ 
+
+        const leads = await LeadsModel.find({
             assignedToUserId: currentUserId,
-            published: true 
+            published: true
         })
             .populate('userId')
             .populate('leadInterestedPropertyId') // Include property info
@@ -407,17 +408,17 @@ const CreateFromContactUs = async (req, res) => {
 
         // Check if user exists by email, if not create one
         let user = await UsersModel.findOne({ email: email.toLowerCase().trim() });
-        
+
         if (!user) {
             // Get the 'user' role (find role with name 'user' or 'USER')
-            let userRole = await RolesModel.findOne({ 
+            let userRole = await RolesModel.findOne({
                 $or: [
                     { name: { $regex: /^user$/i } },
                     { roleName: { $regex: /^user$/i } }
                 ],
-                published: true 
+                published: true
             });
-            
+
             if (!userRole) {
                 // If no user role exists, get the first available role
                 userRole = await RolesModel.findOne({ published: true }).sort({ createdAt: 1 });
@@ -443,22 +444,22 @@ const CreateFromContactUs = async (req, res) => {
 
             // Get a system user for createdByUserId/updatedByUserId (admin user or first user)
             // First try to find an admin role, then find a user with that role
-            const adminRole = await RolesModel.findOne({ 
+            const adminRole = await RolesModel.findOne({
                 $or: [
                     { name: { $regex: /admin/i } },
                     { roleName: { $regex: /admin/i } }
                 ],
-                published: true 
+                published: true
             });
-            
+
             let systemUser = null;
             if (adminRole) {
-                systemUser = await UsersModel.findOne({ 
+                systemUser = await UsersModel.findOne({
                     role: adminRole._id,
-                    published: true 
+                    published: true
                 }).sort({ createdAt: 1 });
             }
-            
+
             // If no admin user found, get the first available user
             if (!systemUser) {
                 systemUser = await UsersModel.findOne({ published: true }).sort({ createdAt: 1 });
@@ -514,22 +515,22 @@ const CreateFromContactUs = async (req, res) => {
         }
 
         // Get system user for lead creation (same logic as user creation)
-        const adminRoleForLead = await RolesModel.findOne({ 
+        const adminRoleForLead = await RolesModel.findOne({
             $or: [
                 { name: { $regex: /admin/i } },
                 { roleName: { $regex: /admin/i } }
             ],
-            published: true 
+            published: true
         });
-        
+
         let systemUserForLead = null;
         if (adminRoleForLead) {
-            systemUserForLead = await UsersModel.findOne({ 
+            systemUserForLead = await UsersModel.findOne({
                 role: adminRoleForLead._id,
-                published: true 
+                published: true
             }).sort({ createdAt: 1 });
         }
-        
+
         if (!systemUserForLead) {
             systemUserForLead = await UsersModel.findOne({ published: true }).sort({ createdAt: 1 });
         }
@@ -557,12 +558,12 @@ const CreateFromContactUs = async (req, res) => {
         };
 
         const lead = await LeadsModel.create(leadData);
-        
+
         // Populate lead for notifications
         const populatedLead = await LeadsModel.findById(lead._id)
             .populate('userId', 'firstName lastName email')
             .populate('leadInterestedPropertyId', 'name propertyName')
-        
+
         // Create notification for all roles except user when lead is created from contact form
         try {
             await NotificationService.createLeadCreatedNotification({
@@ -577,9 +578,9 @@ const CreateFromContactUs = async (req, res) => {
             console.error('Error creating lead created notification from contact form:', notificationError);
             // Don't fail the lead creation if notification fails
         }
-        
+
         console.log('Lead created successfully:', lead._id);
-        
+
         return res.status(200).json({
             message: 'Lead created successfully from contact form',
             data: lead
