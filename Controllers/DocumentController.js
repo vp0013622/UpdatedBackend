@@ -29,10 +29,10 @@ const Create = async (req, res) => {
     }
 
     // Check if user already has a document of this type
-    const existing = await DocumentModel.findOne({ 
-      userId, 
+    const existing = await DocumentModel.findOne({
+      userId,
       documentTypeId,
-      published: true 
+      published: true
     });
 
     if (existing) {
@@ -40,7 +40,7 @@ const Create = async (req, res) => {
       if (existing.cloudinaryId) {
         await ImageUploadService.deleteImage(existing.cloudinaryId);
       }
-      
+
       // Mark old document as unpublished
       existing.published = false;
       existing.updatedByUserId = req.user?.id;
@@ -49,16 +49,16 @@ const Create = async (req, res) => {
 
     // Upload document to Cloudinary
     const uploadResult = await ImageUploadService.uploadDocument(file.buffer, file.originalname);
-    
+
     if (!uploadResult.success) {
-        return res.status(500).json({
-            message: 'Document upload failed: Unable to process document file',
-            error: uploadResult.error,
-            data: {
-              fileName: file.originalname,
-              fileSize: file.size
-            }
-        });
+      return res.status(500).json({
+        message: 'Document upload failed: Unable to process document file',
+        error: uploadResult.error,
+        data: {
+          fileName: file.originalname,
+          fileSize: file.size
+        }
+      });
     }
 
     // Save new record with document URLs
@@ -100,17 +100,24 @@ const GetAllDocument = async (req, res) => {
   try {
     // Build filter based on user role
     let filter = { published: true };
-    
+
     // Get user role and ID
     const userRole = req.user?.role?.toUpperCase();
     const userId = req.user?.id;
-    
+
+    console.log(`DocumentController: GetAllDocument - userRole: ${userRole}, userId: ${userId}`);
+
     // Admin can see all documents
-    // Executive and Sales can only see documents they uploaded (createdByUserId)
+    // Others can see documents where they are the owner (userId) OR they are the creator (createdByUserId)
     if (userRole !== 'ADMIN' && userId) {
-      filter.createdByUserId = userId;
+      filter.$or = [
+        { userId: new ObjectId(userId) },
+        { createdByUserId: new ObjectId(userId) }
+      ];
     }
-    
+
+    console.log('DocumentController: GetAllDocument - filter:', JSON.stringify(filter, null, 2));
+
     const documents = await DocumentModel.find(filter)
       .sort({ createdAt: -1 });
 
@@ -129,13 +136,13 @@ const GetAllDocument = async (req, res) => {
 
 const GetAllDocumentWithParams = async (req, res) => {
   try {
-    const { 
-      userId = null, 
-      documentTypeId = null, 
-      fileName = null, 
-      createdByUserId = null, 
-      updatedByUserId = null, 
-      published = null 
+    const {
+      userId = null,
+      documentTypeId = null,
+      fileName = null,
+      createdByUserId = null,
+      updatedByUserId = null,
+      published = null
     } = req.body;
 
     // Get user role and ID for filtering
@@ -162,12 +169,17 @@ const GetAllDocumentWithParams = async (req, res) => {
           data: []
         });
       }
-    } else {
       // If createdByUserId is not specified, apply role-based filtering
       if (userRole !== 'ADMIN' && loggedInUserId) {
-        filter.createdByUserId = loggedInUserId;
+        filter.$or = [
+          { userId: new ObjectId(loggedInUserId) },
+          { createdByUserId: new ObjectId(loggedInUserId) }
+        ];
       }
     }
+
+    console.log('DocumentController: GetAllDocumentWithParams - filter:', JSON.stringify(filter, null, 2));
+
     if (updatedByUserId !== null) {
       filter.updatedByUserId = updatedByUserId;
     }
@@ -238,7 +250,7 @@ const Edit = async (req, res) => {
     const { id } = req.params;
 
     if (!userId || !documentTypeId || !file || !id) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Validation failed: User ID, Document Type ID, document file, and record ID are required',
         data: {
           missingFields: {
@@ -253,8 +265,8 @@ const Edit = async (req, res) => {
 
     const document = await DocumentModel.findById(id);
     if (!document) {
-      return res.status(404).json({ 
-        message: 'Document not found: The specified document record does not exist' 
+      return res.status(404).json({
+        message: 'Document not found: The specified document record does not exist'
       });
     }
 
@@ -277,16 +289,16 @@ const Edit = async (req, res) => {
 
     // Upload new document to Cloudinary
     const uploadResult = await ImageUploadService.uploadDocument(file.buffer, file.originalname);
-    
+
     if (!uploadResult.success) {
-        return res.status(500).json({
-            message: 'Document update failed: Unable to process new document file',
-            error: uploadResult.error,
-            data: {
-              fileName: file.originalname,
-              fileSize: file.size
-            }
-        });
+      return res.status(500).json({
+        message: 'Document update failed: Unable to process new document file',
+        error: uploadResult.error,
+        data: {
+          fileName: file.originalname,
+          fileSize: file.size
+        }
+      });
     }
 
     // Update document record
