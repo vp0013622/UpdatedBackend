@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import * as dotenv from 'dotenv'
+import mongoose from 'mongoose';
 import { DocumentModel } from "../Models/DocumentModel.js"
 import { ImageUploadService } from "../Services/ImageUploadService.js"
 dotenv.config()
@@ -111,8 +112,8 @@ const GetAllDocument = async (req, res) => {
     // Others can see documents where they are the owner (userId) OR they are the creator (createdByUserId)
     if (userRole !== 'ADMIN' && userId) {
       filter.$or = [
-        { userId: new ObjectId(userId) },
-        { createdByUserId: new ObjectId(userId) }
+        { userId: new mongoose.Types.ObjectId(userId) },
+        { createdByUserId: new mongoose.Types.ObjectId(userId) }
       ];
     }
 
@@ -172,8 +173,8 @@ const GetAllDocumentWithParams = async (req, res) => {
       // If createdByUserId is not specified, apply role-based filtering
       if (userRole !== 'ADMIN' && loggedInUserId) {
         filter.$or = [
-          { userId: new ObjectId(loggedInUserId) },
-          { createdByUserId: new ObjectId(loggedInUserId) }
+          { userId: new mongoose.Types.ObjectId(loggedInUserId) },
+          { createdByUserId: new mongoose.Types.ObjectId(loggedInUserId) }
         ];
       }
     }
