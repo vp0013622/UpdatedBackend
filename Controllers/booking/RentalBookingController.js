@@ -22,15 +22,15 @@ const generateRentSchedule = (startDate, endDate, monthlyRent, rentDueDate, resp
     const schedule = [];
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     let currentDate = new Date(start);
     let monthNumber = 1;
-    
+
     while (currentDate <= end) {
         const month = currentDate.toISOString().slice(0, 7); // YYYY-MM format
         const year = currentDate.getFullYear();
         const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), rentDueDate);
-        
+
         schedule.push({
             month,
             year,
@@ -45,11 +45,11 @@ const generateRentSchedule = (startDate, endDate, monthlyRent, rentDueDate, resp
             updatedByUserId: null,
             updatedAt: null
         });
-        
+
         currentDate.setMonth(currentDate.getMonth() + 1);
         monthNumber++;
     }
-    
+
     return schedule;
 };
 
@@ -148,7 +148,7 @@ const Create = async (req, res) => {
         // Handle document uploads if files are provided
         if (req.files && req.files.length > 0) {
             const uploadedDocuments = [];
-            
+
             for (const file of req.files) {
                 try {
                     // Upload document to Cloudinary
@@ -181,12 +181,12 @@ const Create = async (req, res) => {
                 await rentalBooking.save();
             }
         }
-       //update the property status to rented
-       var propertyModel = await PropertyModel.findById(propertyId);
-       propertyModel.propertyStatus = "RENTED";
-       propertyModel.updatedByUserId = req.user.id;
-       propertyModel.updatedAt = new Date();
-       await propertyModel.save();
+        //update the property status to rented
+        var propertyModel = await PropertyModel.findById(propertyId);
+        propertyModel.propertyStatus = "RENTED";
+        propertyModel.updatedByUserId = req.user.id;
+        propertyModel.updatedAt = new Date();
+        await propertyModel.save();
 
         return res.status(201).json({
             message: 'Rental booking created successfully',
@@ -265,9 +265,9 @@ const GetRentalBookingById = async (req, res) => {
 const GetRentalBookingsBySalesperson = async (req, res) => {
     try {
         const { salespersonId } = req.params;
-        const rentalBookings = await RentalBookingModel.find({ 
+        const rentalBookings = await RentalBookingModel.find({
             assignedSalespersonId: salespersonId,
-            published: true 
+            published: true
         })
             .populate('propertyId')
             .populate('customerId')
@@ -599,11 +599,11 @@ const GetOverdueRents = async (req, res) => {
         const overdueRents = await RentalBookingModel.aggregate([
             { $match: { published: true } },
             { $unwind: '$rentSchedule' },
-            { 
-                $match: { 
+            {
+                $match: {
                     'rentSchedule.status': { $in: ['PENDING', 'OVERDUE'] },
                     'rentSchedule.dueDate': { $lt: currentDate }
-                } 
+                }
             },
             {
                 $lookup: {
@@ -652,7 +652,7 @@ const GetOverdueRents = async (req, res) => {
 const ConfirmRentalBooking = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const rentalBooking = await RentalBookingModel.findOne({ bookingId: id });
         if (!rentalBooking) {
             return res.status(404).json({
@@ -679,7 +679,7 @@ const ConfirmRentalBooking = async (req, res) => {
         rentalBooking.bookingStatus = 'ACTIVE';
         rentalBooking.updatedByUserId = req.user.id;
         rentalBooking.updatedAt = new Date();
-        
+
         await rentalBooking.save();
 
         // Populate the updated booking
@@ -708,21 +708,14 @@ const ConfirmRentalBooking = async (req, res) => {
 const GetMyRentalBookings = async (req, res) => {
     try {
         const { userId } = req.params;
-        
+
         const myBookings = await RentalBookingModel.find({
             customerId: userId,
             published: true
-        }).select({
-            _id: 1,
-            bookingStatus: 1,
-            startDate: 1,
-            endDate: 1,
-            monthlyRent: 1,
-            securityDeposit: 1,
-            maintenanceCharges: 1,
-            propertyId: 1,
-            createdAt: 1
-        }).sort({ createdAt: -1 });
+        }).populate('propertyId')
+            .populate('customerId')
+            .populate('assignedSalespersonId')
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'My rental bookings retrieved successfully',
@@ -765,7 +758,7 @@ const AddDocumentsToRentalBooking = async (req, res) => {
         }
 
         const uploadedDocuments = [];
-        
+
         for (const file of req.files) {
             try {
                 // Upload document to Cloudinary

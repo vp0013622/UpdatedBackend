@@ -34,11 +34,11 @@ const generateInstallmentSchedule = (totalAmount, downPayment, installmentCount,
     const schedule = [];
     const remainingAmount = totalAmount - downPayment;
     const installmentAmount = Math.ceil(remainingAmount / installmentCount);
-    
+
     for (let i = 1; i <= installmentCount; i++) {
         const dueDate = new Date();
         dueDate.setMonth(dueDate.getMonth() + i);
-        
+
         schedule.push({
             installmentNumber: i,
             dueDate,
@@ -52,7 +52,7 @@ const generateInstallmentSchedule = (totalAmount, downPayment, installmentCount,
             updatedAt: null
         });
     }
-    
+
     return schedule;
 };
 
@@ -62,7 +62,7 @@ const generateInstallmentSchedule = (totalAmount, downPayment, installmentCount,
  */
 const Create = async (req, res) => {
     try {
-           
+
         const {
             propertyId,
             customerId,
@@ -141,14 +141,14 @@ const Create = async (req, res) => {
                 published: true,
                 bookingStatus: { $in: ['PENDING', 'CONFIRMED', 'COMPLETED'] }
             };
-            
+
             // If floorNo is provided, also check for the same floor
             if (floorNo) {
                 query.floorNo = floorNo;
             }
-            
+
             const existingBooking = await PurchaseBookingModel.findOne(query);
-            
+
             if (existingBooking) {
                 const floorInfo = floorNo ? ` on Floor ${floorNo}` : '';
                 return res.status(400).json({
@@ -193,7 +193,7 @@ const Create = async (req, res) => {
         if (paymentTerms === "INSTALLMENTS" && installmentCount > 0) {
             installmentSchedule = generateInstallmentSchedule(totalPropertyValue, downPayment, installmentCount, assignedSalespersonId);
         }
-        
+
         const newPurchaseBooking = {
             bookingId,
             bookingStatus: "PENDING",
@@ -255,35 +255,35 @@ const Create = async (req, res) => {
         const purchaseBooking = await PurchaseBookingModel.create(newPurchaseBooking);
 
         // Handle document uploads if files are provided
-            const uploadedDocuments = [];
-            
+        const uploadedDocuments = [];
+
         // Handle multiple file fields
         if (req.files) {
             // Handle general documents array
             if (req.files.documents && Array.isArray(req.files.documents)) {
                 for (const file of req.files.documents) {
                     try {
-                    const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
-                        file.buffer,
-                        file.originalname,
-                        bookingId
-                    );
+                        const uploadResult = await ImageUploadService.uploadPurchaseBookingDocument(
+                            file.buffer,
+                            file.originalname,
+                            bookingId
+                        );
 
-                    if (uploadResult.success) {
-                        uploadedDocuments.push({
-                            originalName: file.originalname,
-                            cloudinaryId: uploadResult.data.cloudinaryId,
-                            documentUrl: uploadResult.data.documentUrl,
-                                documentType: req.body.documentTypes && req.body.documentTypes[req.files.documents.indexOf(file)] 
-                                    ? req.body.documentTypes[req.files.documents.indexOf(file)] 
+                        if (uploadResult.success) {
+                            uploadedDocuments.push({
+                                originalName: file.originalname,
+                                cloudinaryId: uploadResult.data.cloudinaryId,
+                                documentUrl: uploadResult.data.documentUrl,
+                                documentType: req.body.documentTypes && req.body.documentTypes[req.files.documents.indexOf(file)]
+                                    ? req.body.documentTypes[req.files.documents.indexOf(file)]
                                     : "OTHER",
-                            fileSize: uploadResult.data.size,
-                            mimeType: uploadResult.data.mimeType,
-                            uploadedByUserId: req.user.id
-                        });
-                    }
-                } catch (uploadError) {
-                    console.error('Document upload error:', uploadError);
+                                fileSize: uploadResult.data.size,
+                                mimeType: uploadResult.data.mimeType,
+                                uploadedByUserId: req.user.id
+                            });
+                        }
+                    } catch (uploadError) {
+                        console.error('Document upload error:', uploadError);
                     }
                 }
             }
@@ -380,7 +380,7 @@ const Create = async (req, res) => {
             const propertyTypeName = propertyModel.propertyTypeId?.typeName?.toUpperCase() || '';
             const buildingTypes = ['APARTMENT', 'BUILDING', 'FLAT', 'CONDOMINIUM', 'TOWER'];
             const isBuildingType = buildingTypes.some(type => propertyTypeName.includes(type));
-            
+
             // Only mark as SOLD if it's NOT a building/apartment type
             if (!isBuildingType) {
                 propertyModel.propertyStatus = "SOLD";
@@ -411,26 +411,26 @@ const Create = async (req, res) => {
 const GetAllPurchaseBookings = async (req, res) => {
     try {
         const { search, status } = req.query;
-        
+
         // Build the base query
         let query = { published: true };
-        
+
         // Add status filter if provided
         if (status && status !== 'all' && status.trim() !== '') {
             query.bookingStatus = status;
         }
-        
+
         // If search term is provided, use aggregation pipeline for complex search
         let purchaseBookings;
-        
+
         if (search && search.trim() !== '') {
             const searchTerm = search.trim();
             const searchRegex = new RegExp(searchTerm, 'i'); // Case-insensitive search
-            
+
             // Get actual collection names from models
             const propertyCollection = PropertyModel.collection.name;
             const userCollection = UsersModel.collection.name;
-            
+
             // Use aggregation to search across populated fields
             purchaseBookings = await PurchaseBookingModel.aggregate([
                 { $match: query },
@@ -522,8 +522,8 @@ const GetAllPurchaseBookings = async (req, res) => {
         } else {
             // Simple query without search
             purchaseBookings = await PurchaseBookingModel.find(query)
-            .populate('propertyId')
-            .populate('customerId')
+                .populate('propertyId')
+                .populate('customerId')
                 .populate('assignedSalespersonId')
                 .sort({ updatedAt: -1, createdAt: -1 }) // Sort by latest updated first, then by latest created
                 .lean(); // Use lean() for better performance
@@ -582,9 +582,9 @@ const GetPurchaseBookingById = async (req, res) => {
 const GetPurchaseBookingsBySalesperson = async (req, res) => {
     try {
         const { salespersonId } = req.params;
-        const purchaseBookings = await PurchaseBookingModel.find({ 
+        const purchaseBookings = await PurchaseBookingModel.find({
             assignedSalespersonId: salespersonId,
-            published: true 
+            published: true
         })
             .populate('propertyId')
             .populate('customerId')
@@ -747,7 +747,7 @@ const RecordInstallment = async (req, res) => {
         const installmentIndex = purchaseBooking.installmentSchedule.findIndex(
             installment => installment.installmentNumber === installmentNumber
         );
-        
+
         if (installmentIndex === -1) {
             return res.status(404).json({
                 message: 'Installment not found in schedule',
@@ -872,7 +872,7 @@ const UpdateInstallmentStatus = async (req, res) => {
         const installmentIndex = purchaseBooking.installmentSchedule.findIndex(
             installment => installment.installmentNumber === installmentNumber
         );
-        
+
         if (installmentIndex === -1) {
             return res.status(404).json({
                 message: 'Installment not found in schedule',
@@ -963,11 +963,11 @@ const GetOverdueInstallments = async (req, res) => {
         const overdueInstallments = await PurchaseBookingModel.aggregate([
             { $match: { published: true } },
             { $unwind: '$installmentSchedule' },
-            { 
-                $match: { 
+            {
+                $match: {
                     'installmentSchedule.status': { $in: ['PENDING', 'OVERDUE'] },
                     'installmentSchedule.dueDate': { $lt: currentDate }
-                } 
+                }
             },
             {
                 $lookup: {
@@ -1016,7 +1016,7 @@ const GetOverdueInstallments = async (req, res) => {
 const ConfirmPurchaseBooking = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const purchaseBooking = await PurchaseBookingModel.findOne({ bookingId: id });
         if (!purchaseBooking) {
             return res.status(404).json({
@@ -1043,7 +1043,7 @@ const ConfirmPurchaseBooking = async (req, res) => {
         purchaseBooking.bookingStatus = 'CONFIRMED';
         purchaseBooking.updatedByUserId = req.user.id;
         purchaseBooking.updatedAt = new Date();
-        
+
         await purchaseBooking.save();
 
         // Populate the updated booking
@@ -1072,25 +1072,14 @@ const ConfirmPurchaseBooking = async (req, res) => {
 const GetMyPurchaseBookings = async (req, res) => {
     try {
         const { userId } = req.params;
-        
+
         const myBookings = await PurchaseBookingModel.find({
             customerId: userId,
             published: true
-        }).select({
-            _id: 1,
-            bookingId: 1,
-            bookingStatus: 1,
-            totalPropertyValue: 1,
-            downPayment: 1,
-            loanAmount: 1,
-            paymentTerms: 1,
-            installmentCount: 1,
-            propertyId: 1,
-            customerId: 1,
-            createdAt: 1
         }).populate('propertyId')
-        .populate('customerId')
-        .sort({ createdAt: -1 });
+            .populate('customerId')
+            .populate('assignedSalespersonId')
+            .sort({ createdAt: -1 });
 
         return res.status(200).json({
             message: 'My purchase bookings retrieved successfully',
@@ -1133,7 +1122,7 @@ const AddDocumentsToPurchaseBooking = async (req, res) => {
         }
 
         const uploadedDocuments = [];
-        
+
         for (const file of req.files) {
             try {
                 // Upload document to Cloudinary
@@ -1422,7 +1411,7 @@ const GetFlatStatusesByProperty = async (req, res) => {
                 // Sold: COMPLETED status
                 if (booking.bookingStatus === 'COMPLETED') {
                     soldFlats.push(flatInfo);
-                } 
+                }
                 // Booked: PENDING, CONFIRMED status
                 else if (booking.bookingStatus === 'PENDING' || booking.bookingStatus === 'CONFIRMED') {
                     bookedFlats.push(flatInfo);
