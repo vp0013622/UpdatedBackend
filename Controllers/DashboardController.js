@@ -136,7 +136,16 @@ export class DashboardController {
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
 
-            const properties = await PropertyModel.find({ published: true }).populate('propertyTypeId');
+            const currentDate = new Date();
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
+
+            let properties = await PropertyModel.find({ published: true }).populate('propertyTypeId');
+
+            // Filter properties based on timeFrame
+            properties = properties.filter(prop => {
+                const propDate = new Date(prop.createdAt);
+                return propDate >= startDate && propDate <= currentDate;
+            });
 
             // Property status distribution
             const statusDistribution = {};
@@ -170,14 +179,8 @@ export class DashboardController {
                 else priceRanges['5Cr+']++;
             });
 
-            // Recent properties based on time frame
-            const currentDate = new Date();
-            const timeFrameDate = new Date();
-            timeFrameDate.setMonth(currentDate.getMonth() - months);
-
-            const recentProperties = properties.filter(prop =>
-                new Date(prop.createdAt) >= timeFrameDate
-            );
+            // Recent properties are now equal to all filtered properties for this timeframe
+            const recentProperties = properties;
 
             // Sold, active, and total value
             const soldProperties = properties.filter(
@@ -252,7 +255,16 @@ export class DashboardController {
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('LEAD ANALYTICS DEBUG: timeFrame =', timeFrame, 'months =', months);
 
-            const leads = await LeadsModel.find({ published: true });
+            const currentDate = new Date();
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
+
+            let leads = await LeadsModel.find({ published: true });
+
+            // Filter leads based on timeFrame
+            leads = leads.filter(lead => {
+                const leadDate = new Date(lead.createdAt);
+                return leadDate >= startDate && leadDate <= currentDate;
+            });
             //console.log('LEAD ANALYTICS DEBUG: leads count =', leads.length);
 
             // Lead status distribution
@@ -286,14 +298,8 @@ export class DashboardController {
                 followUpDistribution[followUp] = (followUpDistribution[followUp] || 0) + 1;
             });
 
-            // Recent leads based on time frame
-            const currentDate = new Date();
-            const timeFrameDate = new Date();
-            timeFrameDate.setMonth(currentDate.getMonth() - months);
-
-            const recentLeads = leads.filter(lead =>
-                new Date(lead.createdAt) >= timeFrameDate
-            ).slice(0, 5); // Get only first 5 recent leads
+            // Recent leads are now the top 5 of the filtered leads
+            const recentLeads = leads.slice(0, 5); // Get only first 5 recent leads
 
             // Lead conversion rate (leads that became properties)
             const convertedLeads = leads.filter(lead => {
@@ -358,15 +364,23 @@ export class DashboardController {
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('SALES ANALYTICS DEBUG: timeFrame =', timeFrame, 'months =', months);
 
-            const soldProperties = await PropertyModel.find({
+            const currentDate = new Date();
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
+
+            let soldProperties = await PropertyModel.find({
                 propertyStatus: 'SOLD',
                 published: true
+            });
+
+            // Filter properties based on timeFrame
+            soldProperties = soldProperties.filter(prop => {
+                const soldDate = new Date(prop.updatedAt || prop.createdAt);
+                return soldDate >= startDate && soldDate <= currentDate;
             });
             //console.log('SALES ANALYTICS DEBUG: soldProperties count =', soldProperties.length);
 
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
-            const currentDate = new Date();
 
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
@@ -765,15 +779,23 @@ export class DashboardController {
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
             //console.log('ADMIN PERFORMANCE DEBUG: timeFrame =', timeFrame, 'months =', months);
 
-            const soldProperties = await PropertyModel.find({
+            const currentDate = new Date();
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
+
+            let soldProperties = await PropertyModel.find({
                 propertyStatus: 'SOLD',
                 published: true
+            });
+
+            // Filter properties based on timeFrame
+            soldProperties = soldProperties.filter(prop => {
+                const soldDate = new Date(prop.updatedAt || prop.createdAt);
+                return soldDate >= startDate && soldDate <= currentDate;
             });
             //console.log('ADMIN PERFORMANCE DEBUG: soldProperties count =', soldProperties.length);
 
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
-            const currentDate = new Date();
 
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
@@ -836,10 +858,19 @@ export class DashboardController {
             const timeFrame = req.query.timeFrame || '12M';
             const months = DashboardController._getMonthsFromTimeFrame(timeFrame);
 
+            const currentDate = new Date();
+            const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
+
             // Get leads assigned to this sales person
-            const assignedLeads = await LeadsModel.find({
+            let assignedLeads = await LeadsModel.find({
                 assignedTo: userId,
                 published: true
+            });
+
+            // Filter leads based on timeframe
+            assignedLeads = assignedLeads.filter(lead => {
+                const leadDate = new Date(lead.createdAt);
+                return leadDate >= startDate && leadDate <= currentDate;
             });
 
             // Get properties sold by leads assigned to this sales person
@@ -849,18 +880,23 @@ export class DashboardController {
             });
 
             // Filter properties that were sold by leads assigned to this sales person
+            // and within the timeframe
             const userSoldProperties = soldProperties.filter(prop => {
+                const soldDate = new Date(prop.updatedAt || prop.createdAt);
+                const isWithinTimeframe = soldDate >= startDate && soldDate <= currentDate;
+
                 // Check if any lead assigned to this user resulted in this property sale
-                return assignedLeads.some(lead => {
+                const isUsersSale = assignedLeads.some(lead => {
                     // This is a simplified logic - you might need to adjust based on your data model
                     // For now, we'll assume properties sold by this user's leads
                     return prop.createdByUserId === userId;
                 });
+
+                return isWithinTimeframe && isUsersSale;
             });
 
             // Monthly performance for the specified time frame
             const monthlyPerformance = {};
-            const currentDate = new Date();
 
             for (let i = 0; i < months; i++) {
                 const month = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
