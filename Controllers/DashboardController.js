@@ -101,6 +101,28 @@ export class DashboardController {
                 published: true
             });
 
+            const newLeads = allLeads.filter(lead => {
+                let statusVal = null;
+                if (typeof lead.leadStatus === 'string') {
+                    statusVal = lead.leadStatus;
+                } else if (lead.leadStatus && lead.leadStatus.name) {
+                    statusVal = lead.leadStatus.name;
+                }
+
+                return statusVal && statusVal.toLowerCase() === 'new';
+            }).length;
+
+            const completedLeads = allLeads.filter(lead => {
+                let statusVal = null;
+                if (typeof lead.leadStatus === 'string') {
+                    statusVal = lead.leadStatus;
+                } else if (lead.leadStatus && lead.leadStatus.name) {
+                    statusVal = lead.leadStatus.name;
+                }
+
+                return statusVal && (statusVal.toLowerCase() === 'completed' || statusVal.toLowerCase() === 'closed');
+            }).length;
+
             res.status(200).json({
                 statusCode: 200,
                 message: 'Dashboard overview retrieved successfully',
@@ -115,6 +137,8 @@ export class DashboardController {
                     totalPurchaseBookings,
                     roleWiseCustomers,
                     activeLeads,
+                    newLeads,
+                    completedLeads,
                     pendingFollowups,
                     averageRating,
                     todaySchedules,
