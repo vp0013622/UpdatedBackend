@@ -101,6 +101,9 @@ export class DashboardController {
                 published: true
             });
 
+            console.log("--- DEBUG DASHBOARD OVERVIEW LEAD STATUSES ---");
+            allLeads.forEach(l => console.log(l.leadStatus?.name || l.leadStatus));
+
             const newLeads = allLeads.filter(lead => {
                 let statusVal = null;
                 if (typeof lead.leadStatus === 'string') {
@@ -109,7 +112,9 @@ export class DashboardController {
                     statusVal = lead.leadStatus.name;
                 }
 
-                return statusVal && statusVal.toLowerCase() === 'new';
+                const isNew = statusVal && (statusVal.toLowerCase() === 'new' || statusVal.toLowerCase() === 'new lead');
+                if (isNew) console.log("FOUND NEW LEAD:", statusVal);
+                return isNew;
             }).length;
 
             const completedLeads = allLeads.filter(lead => {
@@ -282,7 +287,7 @@ export class DashboardController {
             const currentDate = new Date();
             const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
 
-            let leads = await LeadsModel.find({ published: true });
+            let leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
 
             // Filter leads based on timeFrame
             leads = leads.filter(lead => {
@@ -292,7 +297,12 @@ export class DashboardController {
             //console.log('LEAD ANALYTICS DEBUG: leads count =', leads.length);
 
             // Lead status distribution
+            const allLeadStatuses = await LeadStatusModel.find({ published: true });
             const statusDistribution = {};
+            allLeadStatuses.forEach(s => {
+                statusDistribution[s.name] = 0;
+            });
+
             leads.forEach(lead => {
                 let status = 'unknown';
                 if (typeof lead.leadStatus === 'string') {
@@ -311,7 +321,12 @@ export class DashboardController {
             });
 
             // Follow-up status distribution
+            const allFollowUpStatuses = await FollowUpStatusModel.find({ published: true });
             const followUpDistribution = {};
+            allFollowUpStatuses.forEach(s => {
+                followUpDistribution[s.name] = 0;
+            });
+
             leads.forEach(lead => {
                 let followUp = 'unknown';
                 if (typeof lead.followUpStatus === 'string') {
@@ -356,15 +371,7 @@ export class DashboardController {
                     designationDistribution,
                     followUpDistribution,
                     recentLeads: recentLeads.length,
-                    recentLeadsList: recentLeads.map(lead => ({
-                        id: lead._id,
-                        name: `${lead.firstName} ${lead.lastName}`,
-                        email: lead.email,
-                        phone: lead.phone,
-                        status: typeof lead.leadStatus === 'string' ? lead.leadStatus : (lead.leadStatus?.name || 'unknown'),
-                        designation: lead.leadDesignation || 'unknown',
-                        createdAt: lead.createdAt
-                    })),
+                    recentLeadsList: recentLeads,
                     convertedLeads,
                     conversionRate: leads.length > 0 ? (convertedLeads / leads.length) * 100 : 0,
                     timeFrame
@@ -457,7 +464,7 @@ export class DashboardController {
     static async getUserAnalytics(req, res) {
         try {
             const users = await UsersModel.find({ published: true });
-            const leads = await LeadsModel.find({ published: true });
+            const leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
             const properties = await PropertyModel.find({ published: true });
 
             // User role distribution
@@ -524,7 +531,8 @@ export class DashboardController {
 
             const recentLeads = await LeadsModel.find({ published: true })
                 .sort({ createdAt: -1 })
-                .limit(10);
+                .limit(10)
+                .populate('leadStatus followUpStatus');
 
             const activities = [];
 
@@ -546,7 +554,7 @@ export class DashboardController {
                     type: 'lead',
                     title: 'New Lead Added',
                     subtitle: `${lead.fullName} - ${lead.leadDesignation}`,
-                    description: `Lead status: ${lead.leadStatus}`,
+                    description: `Lead status: ${typeof lead.leadStatus === 'string' ? lead.leadStatus : (lead.leadStatus?.name || 'unknown')}`,
                     time: lead.createdAt,
                     data: lead
                 });
@@ -704,12 +712,18 @@ export class DashboardController {
     // Get lead conversion rates
     static async getLeadConversionRates(req, res) {
         try {
-            const leads = await LeadsModel.find({ published: true });
+            const leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
 
             const totalLeads = leads.length;
-            const convertedLeads = leads.filter(lead =>
-                lead.leadStatus === 'converted' || lead.leadStatus === 'closed'
-            ).length;
+            const convertedLeads = leads.filter(lead => {
+                let statusVal = null;
+                if (typeof lead.leadStatus === 'string') {
+                    statusVal = lead.leadStatus;
+                } else if (lead.leadStatus && lead.leadStatus.name) {
+                    statusVal = lead.leadStatus.name;
+                }
+                return statusVal && (statusVal.toLowerCase() === 'converted' || statusVal.toLowerCase() === 'closed');
+            }).length;
 
             const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
 
@@ -719,9 +733,15 @@ export class DashboardController {
 
             designations.forEach(designation => {
                 const designationLeads = leads.filter(lead => lead.leadDesignation === designation);
-                const converted = designationLeads.filter(lead =>
-                    lead.leadStatus === 'converted' || lead.leadStatus === 'closed'
-                ).length;
+                const converted = designationLeads.filter(lead => {
+                    let statusVal = null;
+                    if (typeof lead.leadStatus === 'string') {
+                        statusVal = lead.leadStatus;
+                    } else if (lead.leadStatus && lead.leadStatus.name) {
+                        statusVal = lead.leadStatus.name;
+                    }
+                    return statusVal && (statusVal.toLowerCase() === 'converted' || statusVal.toLowerCase() === 'closed');
+                }).length;
 
                 designationConversion[designation] = {
                     total: designationLeads.length,
