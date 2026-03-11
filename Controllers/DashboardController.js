@@ -6,6 +6,7 @@ import { LeadStatusModel } from '../Models/LeadStatusModel.js';
 import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 import { RentalBookingModel } from '../Models/booking/RentalBookingModel.js';
 import { PurchaseBookingModel } from '../Models/booking/PurchaseBookingModel.js';
+import { MeetingScheduleStatusModel } from '../Models/MeetingScheduleStatusModel.js';
 
 export class DashboardController {
     // Get overall dashboard statistics
