@@ -12,11 +12,18 @@ export class DashboardController {
     // Get overall dashboard statistics
     static async getDashboardOverview(req, res) {
         try {
-            const userId = req.user._id;
+            const userId = req.user.id || req.user._id;
             const userRole = req.user.role;
+            // Apply Filtering based on Role
+            const isSales = userRole?.toLowerCase() === 'sales' || userRole?.toLowerCase() === 'sales person';
+            const isExecutive = userRole?.toLowerCase() === 'executive';
 
             // Get all properties
-            const allProperties = await PropertyModel.find({ published: true });
+            let propertyQuery = { published: true };
+            // For now, everyone sees all published properties, but we could filter by creator if needed
+            // if (isExecutive) propertyQuery.createdByUserId = userId;
+
+            const allProperties = await PropertyModel.find(propertyQuery);
             const soldProperties = allProperties.filter(
                 p => (p.propertyStatus || '').trim().toLowerCase() === 'sold'
             );
@@ -29,10 +36,15 @@ export class DashboardController {
 
 
             // Get counts
-            const allLeads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
-            const totalLeads = allLeads.length;
+            let leadQuery = { published: true };
+            if (isSales) {
+                leadQuery.assignedToUserId = userId;
+            } else if (isExecutive) {
+                leadQuery.createdByUserId = userId;
+            }
 
-            console.log("--- DASHBOARD ALL LEAD STATUS NAMES ---", allLeads.map(l => l.leadStatus?.name || l.leadStatus));
+            const allLeads = await LeadsModel.find(leadQuery).populate('leadStatus followUpStatus');
+            const totalLeads = allLeads.length;
 
             const activeLeads = allLeads.filter(lead => {
                 let statusVal = null;
@@ -42,7 +54,15 @@ export class DashboardController {
                     statusVal = lead.leadStatus.name;
                 }
 
-                return statusVal && statusVal.toLowerCase() === 'active';
+                if (!statusVal) return false;
+                const lowerStatus = statusVal.toLowerCase();
+                return lowerStatus === 'active' ||
+                    lowerStatus === 'warm' ||
+                    lowerStatus === 'urgent' ||
+                    lowerStatus === 'high budget' ||
+                    lowerStatus === 'low budget' ||
+                    lowerStatus === 'ready to move' ||
+                    lowerStatus === 'in progress';
             }).length;
 
             const pendingFollowups = allLeads.filter(lead => {
@@ -61,19 +81,17 @@ export class DashboardController {
             const totalPurchaseBookings = await PurchaseBookingModel.countDocuments({ published: true });
 
             // Get role-wise customer counts
-            const users = await UsersModel.find({ published: true });
+            const users = await UsersModel.find({ published: true }).populate('role');
             const roleWiseCustomers = {};
             users.forEach(user => {
                 let role = 'unknown';
-                if (typeof user.role === 'string') {
+                if (user.role && typeof user.role === 'object') {
+                    role = user.role.name || 'unknown';
+                } else if (typeof user.role === 'string') {
                     role = user.role;
-                } else if (user.role && typeof user.role === 'object') {
-                    role = user.role.name || user.role.role || 'unknown';
                 }
                 roleWiseCustomers[role] = (roleWiseCustomers[role] || 0) + 1;
             });
-
-            console.log('Role-wise customers from backend:', roleWiseCustomers);
 
             // Calculate average rating (placeholder for now)
             const averageRating = 4.5;
@@ -92,26 +110,32 @@ export class DashboardController {
             }, '_id');
             const inactiveStatusIds = inactiveStatuses.map(s => s._id);
 
+            let scheduleFilter = {
+                status: { $nin: inactiveStatusIds },
+                published: true
+            };
+
+            if (isSales) {
+                scheduleFilter.salesPersonId = userId;
+            } else if (isExecutive) {
+                scheduleFilter.executiveId = userId;
+            }
+
             const todaySchedules = await MeetingScheduleModel.countDocuments({
+                ...scheduleFilter,
                 meetingDate: {
                     $gte: today,
                     $lt: tomorrow
-                },
-                status: { $nin: inactiveStatusIds },
-                published: true
+                }
             });
 
             const tomorrowSchedules = await MeetingScheduleModel.countDocuments({
+                ...scheduleFilter,
                 meetingDate: {
                     $gte: tomorrow,
                     $lt: dayAfterTomorrow
-                },
-                status: { $nin: inactiveStatusIds },
-                published: true
+                }
             });
-
-            console.log("--- DEBUG DASHBOARD OVERVIEW LEAD STATUSES ---");
-            allLeads.forEach(l => console.log(l.leadStatus?.name || l.leadStatus));
 
             const newLeads = allLeads.filter(lead => {
                 let statusVal = null;
@@ -121,9 +145,12 @@ export class DashboardController {
                     statusVal = lead.leadStatus.name;
                 }
 
-                const isNew = statusVal && (statusVal.toLowerCase() === 'new' || statusVal.toLowerCase() === 'new lead');
-                if (isNew) console.log("FOUND NEW LEAD:", statusVal);
-                return isNew;
+                if (!statusVal) return false;
+                const lowerStatus = statusVal.toLowerCase();
+                return lowerStatus === 'new' ||
+                    lowerStatus === 'new lead' ||
+                    lowerStatus === 'inquiry only' ||
+                    lowerStatus === 'interested';
             }).length;
 
             const completedLeads = allLeads.filter(lead => {
@@ -134,7 +161,11 @@ export class DashboardController {
                     statusVal = lead.leadStatus.name;
                 }
 
-                return statusVal && (statusVal.toLowerCase() === 'completed' || statusVal.toLowerCase() === 'closed');
+                if (!statusVal) return false;
+                const lowerStatus = statusVal.toLowerCase();
+                return lowerStatus === 'completed' ||
+                    lowerStatus === 'closed' ||
+                    lowerStatus === 'sold';
             }).length;
 
             res.status(200).json({
@@ -916,7 +947,7 @@ export class DashboardController {
 
             // Get leads assigned to this sales person
             let assignedLeads = await LeadsModel.find({
-                assignedTo: userId,
+                assignedToUserId: userId,
                 published: true
             });
 
@@ -1043,13 +1074,28 @@ export class DashboardController {
             }, '_id');
             const inactiveStatusIds = inactiveStatuses.map(s => s._id);
 
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const isSales = userRole?.toLowerCase() === 'sales' || userRole?.toLowerCase() === 'sales person';
+            const isExecutive = userRole?.toLowerCase() === 'executive';
+
+            let scheduleFilter = {
+                status: { $nin: inactiveStatusIds },
+                published: true
+            };
+
+            if (isSales) {
+                scheduleFilter.salesPersonId = userId;
+            } else if (isExecutive) {
+                scheduleFilter.executiveId = userId;
+            }
+
             const todaysSchedules = await MeetingScheduleModel.find({
+                ...scheduleFilter,
                 meetingDate: {
                     $gte: today,
                     $lt: tomorrow
-                },
-                status: { $nin: inactiveStatusIds },
-                published: true
+                }
             }).populate('scheduledByUserId', 'firstName lastName')
                 .populate('customerId', 'firstName lastName')
                 .populate('propertyId', 'name')
