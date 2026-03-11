@@ -287,7 +287,7 @@ export class DashboardController {
             const currentDate = new Date();
             const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
 
-            let leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
+            let leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus userId');
 
             // Filter leads based on timeFrame
             leads = leads.filter(lead => {
