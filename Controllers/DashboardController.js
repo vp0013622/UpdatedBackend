@@ -106,7 +106,7 @@ export class DashboardController {
 
             // Get status IDs for Cancelled and Completed to exclude them
             const inactiveStatuses = await MeetingScheduleStatusModel.find({
-                statusCode: { $in: [3, 4] }
+                statusCode: { $in: [2, 3] }
             }, '_id');
             const inactiveStatusIds = inactiveStatuses.map(s => s._id);
 
@@ -1070,7 +1070,7 @@ export class DashboardController {
 
             // Get status IDs for Cancelled and Completed to exclude them
             const inactiveStatuses = await MeetingScheduleStatusModel.find({
-                statusCode: { $in: [3, 4] }
+                statusCode: { $in: [2, 3] }
             }, '_id');
             const inactiveStatusIds = inactiveStatuses.map(s => s._id);
 
