@@ -7,6 +7,7 @@ import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 import { RentalBookingModel } from '../Models/booking/RentalBookingModel.js';
 import { PurchaseBookingModel } from '../Models/booking/PurchaseBookingModel.js';
 import { MeetingScheduleStatusModel } from '../Models/MeetingScheduleStatusModel.js';
+import fs from 'fs';
 
 export class DashboardController {
     // Get overall dashboard statistics
@@ -101,10 +102,13 @@ export class DashboardController {
             const averageRating = 4.5;
 
             // Get today's and tomorrow's schedules
-            const today = new Date();
+            const clientDateStr = req.query.clientDate;
+            const today = clientDateStr ? new Date(clientDateStr) : new Date();
             today.setHours(0, 0, 0, 0);
+            
             const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setDate(today.getDate() + 1);
+            
             const dayAfterTomorrow = new Date(today);
             dayAfterTomorrow.setDate(today.getDate() + 2);
 
