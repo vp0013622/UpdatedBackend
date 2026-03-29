@@ -45,6 +45,10 @@ export class DashboardController {
 
             const allLeads = await LeadsModel.find(leadQuery).populate('leadStatus followUpStatus');
             const totalLeads = allLeads.length;
+            
+            console.log('DASHBOARD DEBUG: leadQuery =', JSON.stringify(leadQuery));
+            console.log('DASHBOARD DEBUG: totalLeads =', totalLeads);
+            console.log('DASHBOARD DEBUG: userRole =', userRole);
 
             const activeLeads = allLeads.filter(lead => {
                 let statusVal = null;

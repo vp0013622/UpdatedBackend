@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv'
 import { RolesModel } from "../Models/RolesModel.js"
+import { UsersModel } from "../Models/UsersModel.js"
 dotenv.config()
 
 
@@ -36,8 +37,43 @@ const Create = async (req, res) => {
 
 const GetAllRoles = async (req, res) => {
     try {
-        const roles = await RolesModel.find({ published: true })
-            .sort({ createdAt: -1 });
+        const roles = await RolesModel.aggregate([
+            {
+                $match: { published: true }
+            },
+            {
+                $lookup: {
+                    from: "usersmodels", // MongoDB collection name for UsersModel
+                    localField: "_id",
+                    foreignField: "role",
+                    as: "users"
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    description: 1,
+                    createdByUserId: 1,
+                    updatedByUserId: 1,
+                    published: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    userCount: { 
+                        $size: {
+                            $filter: {
+                                input: "$users",
+                                as: "user",
+                                cond: { $eq: ["$$user.published", true] }
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $sort: { createdAt: -1 }
+            }
+        ]);
+
         return res.status(200).json({
             message: 'all roles',
             count: roles.length,

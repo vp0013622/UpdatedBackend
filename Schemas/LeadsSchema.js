@@ -9,7 +9,6 @@ export const LeadsSchema = mongoose.Schema(
         },
         leadDesignation: {
           type: String,
-          unique: true,
           trim: true
         },
         leadInterestedPropertyId: {

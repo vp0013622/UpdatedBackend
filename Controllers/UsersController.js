@@ -1,3 +1,4 @@
+import mongoose from "mongoose"
 import { UsersModel } from "../Models/UsersModel.js"
 import bcrypt from "bcryptjs"
 import * as dotenv from 'dotenv'
@@ -114,8 +115,8 @@ const GetAllUsersWithParams = async (req, res) => {
         if (phoneNumber !== null) {
             filter.phoneNumber = { $regex: phoneNumber, $options: "i" }
         }
-        if (roleId !== null) {
-            filter.role = roleId
+        if (roleId !== null && roleId !== '' && mongoose.Types.ObjectId.isValid(roleId)) {
+            filter.role = new mongoose.Types.ObjectId(roleId)
         }
         if (published !== null) {
             filter.published = published
@@ -143,13 +144,13 @@ const GetAllUsersWithParams = async (req, res) => {
 
 const GetAgents = async (req, res) => {
     try {
-        const agents = await UsersModel.find({ 
-            isAgent: true, 
-            published: true 
+        const agents = await UsersModel.find({
+            isAgent: true,
+            published: true
         })
-        .populate('role', 'name')
-        .sort({ createdAt: -1 })
-        .limit(10)
+            .populate('role', 'name')
+            .sort({ createdAt: -1 })
+            .limit(10)
 
         return res.status(200).json({
             message: 'agents retrieved successfully',
@@ -234,7 +235,7 @@ const Edit = async (req, res) => {
         }
 
         const roleData = await RolesModel.findById(role)
-        const hashedPassword =  password != null && password != '' ? await bcrypt.hash(password, SALT) : null;
+        const hashedPassword = password != null && password != '' ? await bcrypt.hash(password, SALT) : null;
         const newUser = {
             email: email,
             password: hashedPassword != null ? hashedPassword : user.password,
@@ -247,7 +248,7 @@ const Edit = async (req, res) => {
             published: published,
             isAgent: isAgent === true || isAgent === 'true'
         }
-        
+
         const result = await UsersModel.findByIdAndUpdate(id, newUser)
         if (!result) {
             return res.status(404).json({
@@ -257,7 +258,7 @@ const Edit = async (req, res) => {
         return res.status(201).json({
             message: 'user updated successfully'
         })
-        
+
 
     }
     catch (error) {
@@ -269,7 +270,7 @@ const Edit = async (req, res) => {
                 error: 'Duplicate key error'
             })
         }
-        
+
         res.status(500).json({
             message: 'internal server error',
             error: error.message
@@ -298,7 +299,7 @@ const DeleteById = async (req, res) => {
         return res.status(201).json({
             message: 'user deleted successfully'
         })
-        
+
 
     }
     catch (error) {
@@ -351,7 +352,7 @@ const ChangePassword = async (req, res) => {
         // Update the password
         const updatedUser = await UsersModel.findByIdAndUpdate(
             userId,
-            { 
+            {
                 password: hashedNewPassword,
                 updatedByUserId: userId
             },

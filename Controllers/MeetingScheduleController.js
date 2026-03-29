@@ -99,8 +99,13 @@ const Create = async (req, res) => {
 
 const GetAllMeetingSchedules = async (req, res) => {
     try {
+        const { sort = 'meetingDate', order = 'asc' } = req.query;
+        const sortOrder = order.toLowerCase() === 'desc' ? -1 : 1;
+        const sortOptions = {};
+        sortOptions[sort] = sortOrder;
+
         const meetings = await MeetingScheduleModel.find({ published: true })
-            .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
+            .sort(sortOptions)
             .populate('status', 'name statusCode description')
             .populate('salesPersonId', 'firstName lastName email phoneNumber')
             .populate('executiveId', 'firstName lastName email phoneNumber')
@@ -168,6 +173,11 @@ const GetAllMeetingSchedules = async (req, res) => {
 const GetMyMeetings = async (req, res) => {
     try {
         const { id } = req.params;
+        const { sort = 'meetingDate', order = 'asc' } = req.query;
+        const sortOrder = order.toLowerCase() === 'desc' ? -1 : 1;
+        const sortOptions = {};
+        sortOptions[sort] = sortOrder;
+
         const objectId = new mongoose.Types.ObjectId(id);
 
         // Find meetings where user is customer, sales person, or executive
@@ -180,7 +190,7 @@ const GetMyMeetings = async (req, res) => {
                 { scheduledByUserId: id }
             ]
         })
-            .sort({ meetingDate: 1 }) // Sort by meetingDate ascending (earliest first)
+            .sort(sortOptions)
             .populate('status', 'name statusCode description')
             .populate('salesPersonId', 'firstName lastName email phoneNumber')
             .populate('executiveId', 'firstName lastName email phoneNumber');
