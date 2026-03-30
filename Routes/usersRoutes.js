@@ -4,7 +4,7 @@ import { RoleAuthMiddleware } from '../Middlewares/RoleAuthMiddelware.js'
 import { AuthMiddelware } from '../Middlewares/AuthMiddelware.js'
 
 const UsersRouter = express.Router()
-UsersRouter.post('/register',  RoleAuthMiddleware("admin"), Register) //only admin
+UsersRouter.post('/register',  RoleAuthMiddleware("admin", "executive"), Register) //admin and executive
 UsersRouter.get('/',  RoleAuthMiddleware("admin","executive","sales","user"), GetAllUsers)//only for admin
 UsersRouter.get('/notpublishedusers',  RoleAuthMiddleware("admin","executive","sales","user"), GetAllNotPublishedUsers)//only for admin
 UsersRouter.post('/withparams',  RoleAuthMiddleware("admin","executive","sales","user"), GetAllUsersWithParams)//only for admin

@@ -7,9 +7,24 @@ import { MeetingScheduleModel } from '../Models/MeetingScheduleModel.js';
 import { RentalBookingModel } from '../Models/booking/RentalBookingModel.js';
 import { PurchaseBookingModel } from '../Models/booking/PurchaseBookingModel.js';
 import { MeetingScheduleStatusModel } from '../Models/MeetingScheduleStatusModel.js';
+import { NotificationModel } from '../Models/NotificationModel.js';
 import fs from 'fs';
 
 export class DashboardController {
+    // Helper to get role-based filters for leads
+    static _getRoleBasedLeadFilter(userId, userRole) {
+        const isSales = userRole?.toLowerCase() === 'sales' || userRole?.toLowerCase() === 'sales person';
+        const isExecutive = userRole?.toLowerCase() === 'executive';
+        const isAdmin = userRole?.toLowerCase() === 'admin';
+
+        let filter = { published: true };
+        if (isSales) {
+            filter.assignedToUserId = userId;
+        }
+        // Executives and Admins see all published leads
+        return filter;
+    }
+
     // Get overall dashboard statistics
     static async getDashboardOverview(req, res) {
         try {
@@ -37,19 +52,14 @@ export class DashboardController {
 
 
             // Get counts
-            let leadQuery = { published: true };
-            if (isSales) {
-                leadQuery.assignedToUserId = userId;
-            } else if (isExecutive) {
-                leadQuery.createdByUserId = userId;
-            }
+            const leadQuery = DashboardController._getRoleBasedLeadFilter(userId, userRole);
 
             const allLeads = await LeadsModel.find(leadQuery).populate('leadStatus followUpStatus');
             const totalLeads = allLeads.length;
-            
-            console.log('DASHBOARD DEBUG: leadQuery =', JSON.stringify(leadQuery));
-            console.log('DASHBOARD DEBUG: totalLeads =', totalLeads);
-            console.log('DASHBOARD DEBUG: userRole =', userRole);
+
+            // console.log('DASHBOARD DEBUG: leadQuery =', JSON.stringify(leadQuery));
+            // console.log('DASHBOARD DEBUG: totalLeads =', totalLeads);
+            // console.log('DASHBOARD DEBUG: userRole =', userRole);
 
             const activeLeads = allLeads.filter(lead => {
                 let statusVal = null;
@@ -105,10 +115,10 @@ export class DashboardController {
             const clientDateStr = req.query.clientDate;
             const today = clientDateStr ? new Date(clientDateStr) : new Date();
             today.setHours(0, 0, 0, 0);
-            
+
             const tomorrow = new Date(today);
             tomorrow.setDate(today.getDate() + 1);
-            
+
             const dayAfterTomorrow = new Date(today);
             dayAfterTomorrow.setDate(today.getDate() + 2);
 
@@ -176,6 +186,26 @@ export class DashboardController {
                     lowerStatus === 'sold';
             }).length;
 
+            // Get today's notification count
+            // We count notifications created today OR notifications about meetings happening today
+            const todayStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            const todayNotificationsCount = await NotificationModel.countDocuments({
+                recipientIds: userId,
+                published: true,
+                $or: [
+                    {
+                        createdAt: {
+                            $gte: today,
+                            $lt: tomorrow
+                        }
+                    },
+                    {
+                        type: { $in: ['meeting_schedule', 'meeting_reminder'] },
+                        'data.date': todayStr
+                    }
+                ]
+            });
+
             res.status(200).json({
                 statusCode: 200,
                 message: 'Dashboard overview retrieved successfully',
@@ -195,7 +225,8 @@ export class DashboardController {
                     pendingFollowups,
                     averageRating,
                     todaySchedules,
-                    tomorrowSchedules
+                    tomorrowSchedules,
+                    todayNotificationsCount
                 }
             });
         } catch (error) {
@@ -335,7 +366,11 @@ export class DashboardController {
             const currentDate = new Date();
             const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - months, 1);
 
-            let leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus userId');
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const leadsFilter = DashboardController._getRoleBasedLeadFilter(userId, userRole);
+
+            let leads = await LeadsModel.find(leadsFilter).populate('leadStatus followUpStatus userId');
 
             // Filter leads based on timeFrame
             leads = leads.filter(lead => {
@@ -577,7 +612,11 @@ export class DashboardController {
                 .limit(10)
                 .populate('propertyTypeId');
 
-            const recentLeads = await LeadsModel.find({ published: true })
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const leadsFilter = DashboardController._getRoleBasedLeadFilter(userId, userRole);
+
+            const recentLeads = await LeadsModel.find(leadsFilter)
                 .sort({ createdAt: -1 })
                 .limit(10)
                 .populate('leadStatus followUpStatus');
@@ -628,6 +667,10 @@ export class DashboardController {
     // Get weekly performance data
     static async getWeeklyPerformance(req, res) {
         try {
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const leadsFilter = DashboardController._getRoleBasedLeadFilter(userId, userRole);
+
             const currentDate = new Date();
             const weekStart = new Date(currentDate);
             weekStart.setDate(currentDate.getDate() - currentDate.getDay() + 1);
@@ -648,8 +691,8 @@ export class DashboardController {
 
                 // Count leads created on this day
                 const leadsCount = await LeadsModel.countDocuments({
-                    createdAt: { $gte: dayStart, $lt: dayEnd },
-                    published: true
+                    ...leadsFilter,
+                    createdAt: { $gte: dayStart, $lt: dayEnd }
                 });
 
                 weekData.push({
@@ -678,6 +721,10 @@ export class DashboardController {
     // Get monthly trends
     static async getMonthlyTrends(req, res) {
         try {
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const leadsFilter = DashboardController._getRoleBasedLeadFilter(userId, userRole);
+
             const currentDate = new Date();
             const trends = [];
 
@@ -691,8 +738,8 @@ export class DashboardController {
                 });
 
                 const leadsCount = await LeadsModel.countDocuments({
-                    createdAt: { $gte: monthStart, $lt: monthEnd },
-                    published: true
+                    ...leadsFilter,
+                    createdAt: { $gte: monthStart, $lt: monthEnd }
                 });
 
                 const soldProperties = await PropertyModel.find({
@@ -760,7 +807,11 @@ export class DashboardController {
     // Get lead conversion rates
     static async getLeadConversionRates(req, res) {
         try {
-            const leads = await LeadsModel.find({ published: true }).populate('leadStatus followUpStatus');
+            const userId = req.user.id || req.user._id;
+            const userRole = req.user.role;
+            const filter = DashboardController._getRoleBasedLeadFilter(userId, userRole);
+
+            const leads = await LeadsModel.find(filter).populate('leadStatus followUpStatus');
 
             const totalLeads = leads.length;
             const convertedLeads = leads.filter(lead => {

@@ -8,6 +8,8 @@ dotenv.config();
 const RegisterNormalUser = async (req, res) => {
   try {
     const { email, password, firstName, lastName, phoneNumber, role} = req.body;
+    const currentUser = req.user;
+
     if (!email || !password || !firstName || !lastName || !role) {
       return res.status(400).json({
         message: "bad request check data again",
@@ -31,6 +33,23 @@ const RegisterNormalUser = async (req, res) => {
     }
 
     const roleData = await RolesModel.findById(role)
+    if (!roleData) {
+      return res.status(404).json({
+        message: "role not found",
+        data: { role }
+      });
+    }
+
+    // Role restriction for Executive users
+    const requesterRole = currentUser.role ? currentUser.role.toUpperCase() : "";
+    if (requesterRole === 'EXECUTIVE') {
+      const targetRoleName = roleData.name ? roleData.name.toUpperCase() : "";
+      if (targetRoleName !== 'USER') {
+        return res.status(403).json({
+          message: "Access denied: Executives can only create users with 'User' role",
+        });
+      }
+    }
 
     const hashedPassword = await bcrypt.hash(password, SALT);
     const newUser = {
@@ -40,8 +59,8 @@ const RegisterNormalUser = async (req, res) => {
       lastName: lastName,
       phoneNumber: phoneNumber,
       role: roleData._id,
-      createdByUserId: "68163015624b09de23e942ad",
-      updatedByUserId: "68163015624b09de23e942ad",
+      createdByUserId: currentUser.id || currentUser._id || "68163015624b09de23e942ad",
+      updatedByUserId: currentUser.id || currentUser._id || "68163015624b09de23e942ad",
       published: true,
     };
     const user = await UsersModel.create(newUser);

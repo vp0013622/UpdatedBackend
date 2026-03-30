@@ -10,6 +10,8 @@ dotenv.config()
 const Register = async (req, res) => {
     try {
         const { email, password, firstName, lastName, phoneNumber, role, isAgent = false } = req.body
+        const currentUser = req.user;
+
         if (!email || !password || !firstName || !lastName || !role) {
             return res.status(400).json({
                 message: 'bad request check data again',
@@ -33,6 +35,24 @@ const Register = async (req, res) => {
         }
 
         const roleData = await RolesModel.findById(role)
+        if (!roleData) {
+            return res.status(404).json({
+                message: "role not found",
+                data: { role }
+            });
+        }
+
+        // Role restriction for Executive users
+        const requesterRole = currentUser.role ? currentUser.role.toUpperCase() : "";
+        if (requesterRole === 'EXECUTIVE') {
+            const targetRoleName = roleData.name ? roleData.name.toUpperCase() : "";
+            if (targetRoleName !== 'USER') {
+                return res.status(403).json({
+                    message: "Access denied: Executives can only create users with 'User' role",
+                });
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, SALT);
         const newUser = {
             email: email,
@@ -41,8 +61,8 @@ const Register = async (req, res) => {
             lastName: lastName,
             phoneNumber: phoneNumber,
             role: roleData._id,
-            createdByUserId: req.user.id,
-            updatedByUserId: req.user.id,
+            createdByUserId: currentUser.id || currentUser._id,
+            updatedByUserId: currentUser.id || currentUser._id,
             published: true,
             isAgent: isAgent === true || isAgent === 'true'
         }
@@ -235,6 +255,23 @@ const Edit = async (req, res) => {
         }
 
         const roleData = await RolesModel.findById(role)
+        if (!roleData) {
+            return res.status(404).json({
+                message: "role not found",
+                data: { role }
+            });
+        }
+
+        // Role restriction for Executive users on EDIT
+        const requesterRole = req.user.role ? req.user.role.toUpperCase() : "";
+        if (requesterRole === 'EXECUTIVE') {
+            if (roleData._id.toString() !== (user.role ? user.role.toString() : "")) {
+                return res.status(403).json({
+                    message: "Access denied: Executives cannot change user roles",
+                });
+            }
+        }
+
         const hashedPassword = password != null && password != '' ? await bcrypt.hash(password, SALT) : null;
         const newUser = {
             email: email,
