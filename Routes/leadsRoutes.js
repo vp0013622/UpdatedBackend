@@ -4,7 +4,7 @@ import { RoleAuthMiddleware } from '../Middlewares/RoleAuthMiddelware.js'
 
 const LeadsRouter = express.Router()
 // Authenticated endpoint for admin/executive
-LeadsRouter.post('/create',  RoleAuthMiddleware("admin", "executive"), Create)
+LeadsRouter.post('/create',  RoleAuthMiddleware("admin", "executive", "sales"), Create)
 LeadsRouter.get('/',  RoleAuthMiddleware("admin", "executive", "sales"), GetAllLeads)
 LeadsRouter.get('/notpublishedusers',  RoleAuthMiddleware("admin", "executive", "sales"), GetAllNotPublishedLeads)
 LeadsRouter.get('/assigned-to-me',  RoleAuthMiddleware("admin", "executive", "sales"), GetAssignedLeadsForCurrentUser)
